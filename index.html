@@ -23,6 +23,11 @@
     background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #f0fdf4 100%);
     overflow: hidden;
     z-index: 0;
+    transition: opacity 0.35s ease;
+  }
+  .demo-bg.collapsed {
+    opacity: 0;
+    pointer-events: none;
   }
   .demo-bg::before {
     content: '';
@@ -675,7 +680,13 @@ function addProject() {
 
 function toggleMinimize() {
   minimized = !minimized;
-  document.getElementById('mainBody').style.display = minimized ? 'none' : '';
+  const body = document.getElementById('mainBody');
+  const bg = document.querySelector('.demo-bg');
+  const btn = document.querySelector('.ctrl-btn[title="Minimize"]');
+  body.style.display = minimized ? 'none' : '';
+  bg.classList.toggle('collapsed', minimized);
+  btn.textContent = minimized ? '□' : '─';
+  btn.title = minimized ? 'Expand' : 'Minimize';
 }
 
 function startPulse() { document.getElementById('pulseDot').style.animation = 'pulse 1.2s ease-in-out infinite'; }
@@ -724,11 +735,13 @@ function updateFooterDate() {
   document.addEventListener('mouseup', () => dragging=false);
 })();
 
-updateFooterDate();
-renderAll();
-if (state.activeProjectId && state.activeStart) { timerInterval=setInterval(tickTimer,1000); startPulse(); }
-setInterval(renderSummary, 5000);
-setInterval(updateFooterDate, 1000);
+document.addEventListener('DOMContentLoaded', function() {
+  updateFooterDate();
+  renderAll();
+  if (state.activeProjectId && state.activeStart) { timerInterval=setInterval(tickTimer,1000); startPulse(); }
+  setInterval(renderSummary, 5000);
+  setInterval(updateFooterDate, 1000);
+});
 </script>
 </body>
 </html>
