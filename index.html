@@ -8,14 +8,17 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
+  html, body {
     font-family: 'IBM Plex Sans', sans-serif;
     background: #ffffff;
-    min-height: 100vh;
+    margin: 0; padding: 0;
+    width: 100%;
+    height: auto;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     color: #111827;
+    overflow: hidden;
   }
 
   .demo-bg {
@@ -28,6 +31,10 @@
   .demo-bg.collapsed {
     opacity: 0;
     pointer-events: none;
+  }
+  /* Widget sits at top so iframe can shrink around it */
+  #widget {
+    margin-top: 0 !important;
   }
   .demo-bg::before {
     content: '';
@@ -687,6 +694,13 @@ function toggleMinimize() {
   bg.classList.toggle('collapsed', minimized);
   btn.textContent = minimized ? '□' : '─';
   btn.title = minimized ? 'Expand' : 'Minimize';
+  // Notify parent iframe to resize
+  setTimeout(notifyHeight, 50);
+}
+
+function notifyHeight() {
+  const h = document.getElementById('widget').getBoundingClientRect().height;
+  window.parent.postMessage({ type: 'ws-tracker-resize', height: Math.ceil(h) + 20 }, '*');
 }
 
 function startPulse() { document.getElementById('pulseDot').style.animation = 'pulse 1.2s ease-in-out infinite'; }
@@ -741,6 +755,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (state.activeProjectId && state.activeStart) { timerInterval=setInterval(tickTimer,1000); startPulse(); }
   setInterval(renderSummary, 5000);
   setInterval(updateFooterDate, 1000);
+  // Send initial height to parent
+  setTimeout(notifyHeight, 100);
 });
 </script>
 </body>
