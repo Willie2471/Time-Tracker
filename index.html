@@ -396,9 +396,12 @@
     color: #6b7280;
     cursor: pointer;
     font-family: 'IBM Plex Sans', sans-serif;
-    transition: border-color 0.15s, color 0.15s;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
   .export-btn:hover { border-color: #86efac; color: #15803d; }
+  .export-btn.syncing { border-color: #fbbf24; color: #d97706; cursor: wait; }
+  .export-btn.synced  { border-color: #86efac; color: #15803d; background: #f0fdf4; }
+  .export-btn.error   { border-color: #fca5a5; color: #ef4444; }
 
   #toast {
     position: fixed;
@@ -471,7 +474,7 @@
 
     <div class="widget-footer">
       <span class="footer-label" id="footerDate"></span>
-      <button class="export-btn" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="export-btn" id="syncBtn" onclick="syncToSheets()">↑ Sync to Sheets</button>
     </div>
   </div>
 </div>
@@ -721,20 +724,86 @@ const ps = document.createElement('style');
 ps.textContent = `@keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(22,163,74,0.4)}50%{box-shadow:0 0 12px rgba(22,163,74,0.8)}}`;
 document.head.appendChild(ps);
 
-function exportCSV() {
-  if (state.projects.every(p => p.sessions.length === 0)) { showToast('No sessions logged yet'); return; }
-  let csv = 'Project,Date,Start,End,Duration (min)\n';
+// ── PASTE YOUR APPS SCRIPT WEB APP URL HERE ──
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz5I-6f8vgLgBhTbaVaFHAUmgOLaWULQMqP2suM485SRXDxaitv5y9GqyZGIkRbHKy6Xw/exec';
+
+// Track which sessions have already been synced
+function getSyncedIds() {
+  try { return JSON.parse(localStorage.getItem('ws_synced_ids') || '[]'); } catch { return []; }
+}
+function markSynced(ids) {
+  const existing = getSyncedIds();
+  localStorage.setItem('ws_synced_ids', JSON.stringify([...new Set([...existing, ...ids])]));
+}
+
+async function syncToSheets() {
+  if (SHEETS_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    showToast('⚠️ Paste your Apps Script URL first');
+    return;
+  }
+
+  const btn = document.getElementById('syncBtn');
+  const syncedIds = getSyncedIds();
+
+  // Collect only unsynced sessions
+  const payload = [];
   state.projects.forEach(proj => {
     proj.sessions.forEach(sess => {
-      const s = new Date(sess.start), e = new Date(sess.end);
-      csv += `"${proj.name}","${s.toLocaleDateString()}","${s.toLocaleTimeString()}","${e.toLocaleTimeString()}","${Math.round(sess.seconds/60)}"\n`;
+      const id = `${proj.id}-${sess.start}`;
+      if (!syncedIds.includes(id)) {
+        payload.push({
+          id,
+          project: proj.name,
+          task: '',
+          start: sess.start,
+          end: sess.end,
+          seconds: sess.seconds,
+          notes: ''
+        });
+      }
     });
   });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = `ws-time-${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  showToast('CSV exported!');
+
+  if (payload.length === 0) {
+    showToast('All sessions already synced ✓');
+    return;
+  }
+
+  btn.classList.add('syncing');
+  btn.textContent = '⟳ Syncing…';
+
+  try {
+    const res = await fetch(SHEETS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'text/plain' } // Apps Script requires text/plain for CORS
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      markSynced(payload.map(p => p.id));
+      btn.classList.remove('syncing');
+      btn.classList.add('synced');
+      btn.textContent = '✓ Synced!';
+      showToast(`${payload.length} session${payload.length > 1 ? 's' : ''} saved to Sheets`);
+      setTimeout(() => {
+        btn.classList.remove('synced');
+        btn.textContent = '↑ Sync to Sheets';
+      }, 3000);
+    } else {
+      throw new Error(json.error || 'Unknown error');
+    }
+  } catch (err) {
+    btn.classList.remove('syncing');
+    btn.classList.add('error');
+    btn.textContent = '✕ Failed';
+    showToast('Sync failed — check console');
+    console.error('Sheets sync error:', err);
+    setTimeout(() => {
+      btn.classList.remove('error');
+      btn.textContent = '↑ Sync to Sheets';
+    }, 3000);
+  }
 }
 
 function showToast(msg) {
