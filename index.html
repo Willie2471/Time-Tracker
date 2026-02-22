@@ -685,22 +685,40 @@ function addProject() {
   showToast(`Added "${name}"`);
 }
 
+// Collapsed = just the header bar height
+const COLLAPSED_HEIGHT = 52;
+
 function toggleMinimize() {
   minimized = !minimized;
   const body = document.getElementById('mainBody');
   const bg = document.querySelector('.demo-bg');
   const btn = document.querySelector('.ctrl-btn[title="Minimize"]');
-  body.style.display = minimized ? 'none' : '';
-  bg.classList.toggle('collapsed', minimized);
-  btn.textContent = minimized ? '□' : '─';
-  btn.title = minimized ? 'Expand' : 'Minimize';
-  // Notify parent iframe to resize
-  setTimeout(notifyHeight, 50);
+
+  if (minimized) {
+    // Collapsing — hide body first, send small height immediately
+    body.style.display = 'none';
+    bg.classList.add('collapsed');
+    btn.textContent = '□';
+    btn.title = 'Expand';
+    window.parent.postMessage({ type: 'ws-tracker-resize', height: COLLAPSED_HEIGHT }, '*');
+  } else {
+    // Expanding — show body first, then measure after paint
+    body.style.display = '';
+    bg.classList.remove('collapsed');
+    btn.textContent = '─';
+    btn.title = 'Minimize';
+    // Wait for browser to render the full content, then report real height
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        notifyHeight();
+      });
+    });
+  }
 }
 
 function notifyHeight() {
-  const h = document.getElementById('widget').getBoundingClientRect().height;
-  window.parent.postMessage({ type: 'ws-tracker-resize', height: Math.ceil(h) + 20 }, '*');
+  const h = document.getElementById('widget').scrollHeight;
+  window.parent.postMessage({ type: 'ws-tracker-resize', height: h + 24 }, '*');
 }
 
 function startPulse() { document.getElementById('pulseDot').style.animation = 'pulse 1.2s ease-in-out infinite'; }
