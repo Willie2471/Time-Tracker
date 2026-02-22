@@ -429,7 +429,7 @@
       <span class="logo-text">WS Time Tracker</span>
     </div>
     <div class="header-controls">
-      <button class="ctrl-btn" title="Minimize" onclick="toggleMinimize()">─</button>
+      <button class="ctrl-btn" id="minimizeBtn" title="Minimize/Expand" onclick="toggleMinimize()">─</button>
     </div>
   </div>
 
@@ -685,29 +685,23 @@ function addProject() {
   showToast(`Added "${name}"`);
 }
 
-// Collapsed = just the header bar height
 const COLLAPSED_HEIGHT = 52;
 
 function toggleMinimize() {
   minimized = !minimized;
   const body = document.getElementById('mainBody');
   const bg = document.querySelector('.demo-bg');
-  const btn = document.querySelector('.ctrl-btn[title="Minimize"]');
+  const btn = document.getElementById('minimizeBtn');
 
   if (minimized) {
-    // Collapsing — hide body first, send small height immediately
     body.style.display = 'none';
     bg.classList.add('collapsed');
     btn.textContent = '□';
-    btn.title = 'Expand';
     window.parent.postMessage({ type: 'ws-tracker-resize', height: COLLAPSED_HEIGHT }, '*');
   } else {
-    // Expanding — show body first, then measure after paint
     body.style.display = '';
     bg.classList.remove('collapsed');
     btn.textContent = '─';
-    btn.title = 'Minimize';
-    // Wait for browser to render the full content, then report real height
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         notifyHeight();
