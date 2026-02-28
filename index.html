@@ -284,6 +284,29 @@ html, body {
 .btn-sheets.syncing { background: #d97706; border-color: #d97706; cursor: wait; }
 .btn-sheets.synced  { background: #16a34a; border-color: #16a34a; }
 .btn-sheets.error   { background: #ef4444; border-color: #ef4444; }
+.btn-pull {
+  background: #fff; border-color: #86efac; color: #15803d;
+}
+.btn-pull:hover { background: #f0fdf4; }
+.btn-pull.syncing { border-color: #fbbf24; color: #d97706; cursor: wait; }
+.btn-pull.synced  { background: #f0fdf4; border-color: #16a34a; color: #15803d; }
+.btn-pull.error   { border-color: #fca5a5; color: #ef4444; }
+
+/* Sync status bar */
+.sync-status-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.sync-status-bar.show { display: flex; }
+.sync-status-bar.info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.sync-status-bar.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.sync-status-bar.error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
 /* ── Dash Filter Tabs ── */
 .dash-filter-wrap {
@@ -529,10 +552,14 @@ td .duration-pill {
         <!-- Actions -->
         <div class="dash-actions">
           <button class="dash-btn btn-print" onclick="printDashboard()">🖨 Print PDF</button>
-          <button class="dash-btn btn-sheets" id="dashSyncBtn" onclick="dashSyncToSheets()">📊 Export to Sheets</button>
+          <button class="dash-btn btn-pull" id="pullBtn" onclick="pullFromSheets()">⬇ Pull from Sheets</button>
+          <button class="dash-btn btn-sheets" id="dashSyncBtn" onclick="dashSyncToSheets()">📊 Push to Sheets</button>
         </div>
       </div>
     </div>
+
+    <!-- Sync Status -->
+    <div class="sync-status-bar" id="syncStatusBar"></div>
 
     <!-- KPI Cards -->
     <div class="kpi-row">
@@ -838,6 +865,10 @@ function renderDashboard() {
   // KPIs
   document.getElementById('kpiTotal').textContent = formatHM(totalSec);
   document.getElementById('kpiPeriodLabel').textContent = labels[dashFilter];
+  const ls=getLastSynced(); if(ls) {
+    const el=document.getElementById('lastSyncedLabel');
+    if(el) el.textContent='Last synced: '+ls;
+  }
   document.getElementById('kpiSessions').textContent = sessions.length;
   const avgSec = sessions.length ? Math.round(totalSec/sessions.length) : 0;
   document.getElementById('kpiAvg').textContent = sessions.length ? formatHM(avgSec) : '—';
@@ -1046,7 +1077,7 @@ function markSynced(ids) {
 }
 
 async function syncToSheets() {
-  if (SHEETS_URL==='https://script.google.com/macros/s/AKfycbyjbFUxCeuMa8jjm8nWPkZX9inb2KIqvsbu0Zat993m__niaWnk-92A9gmd-zmiWqqLlw/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('syncBtn');
   const syncedIds=getSyncedIds(), payload=[];
   state.projects.forEach(proj => {
@@ -1076,35 +1107,134 @@ async function syncToSheets() {
 // ══════════════════════════════════════
 // DASHBOARD EXPORT TO SHEETS
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// PUSH — Dashboard → Sheets
+// ══════════════════════════════════════
 async function dashSyncToSheets() {
-  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbyjbFUxCeuMa8jjm8nWPkZX9inb2KIqvsbu0Zat993m__niaWnk-92A9gmd-zmiWqqLlw/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbw0bSLOiBicuZuZLLVpgusUu7HzGvC-1nkmqxDLq0qQtWLi6znudhVPZ2MEbN_CT7rvKQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('dashSyncBtn');
-  const sessions=getAllDashSessions();
-  if (!sessions.length) { showToast('No data in this period to export'); return; }
-  const syncedIds=getSyncedIds();
-  const payload=[];
+
+  // Build full payload of ALL sessions (not just filtered) so sheet stays complete
+  const syncedIds=getSyncedIds(), payload=[];
   state.projects.forEach(proj=>{
-    proj.sessions.filter(s=>sessionInDashFilter(s)).forEach(sess=>{
+    proj.sessions.forEach(sess=>{
       const id=`${proj.id}-${sess.start}`;
-      if (!syncedIds.includes(id)) payload.push({id,project:proj.name,task:'',start:sess.start,end:sess.end,seconds:sess.seconds,notes:''});
+      // Always include — server will update if exists, add if new
+      payload.push({id, project:proj.name, task:'', start:sess.start, end:sess.end, seconds:sess.seconds, notes:''});
     });
   });
-  if (!payload.length) { showToast('All visible sessions already synced ✓'); return; }
-  btn.classList.add('syncing'); btn.textContent='⟳ Exporting…';
+  if (!payload.length) { showToast('No sessions to push yet'); return; }
+
+  btn.classList.add('syncing'); btn.textContent='⟳ Pushing…';
+  setSyncStatus('info', `⟳ Pushing ${payload.length} sessions to Google Sheets…`);
   try {
     const res=await fetch(DASH_SHEETS_URL,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
     const json=await res.json();
     if (json.success) {
       markSynced(payload.map(p=>p.id));
-      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Exported!';
-      showToast(`${payload.length} rows exported to Google Sheets`);
-      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='📊 Export to Sheets'; },3000);
+      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pushed!';
+      const msg=`✓ Pushed ${json.added} new + ${json.updated} updated rows to Google Sheets`;
+      showToast(msg); setSyncStatus('success', msg);
+      setLastSynced();
+      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='📊 Push to Sheets'; },3000);
     } else throw new Error(json.error||'Unknown error');
   } catch(err) {
     btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
-    showToast('Export failed — check console'); console.error(err);
-    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='📊 Export to Sheets'; },3000);
+    const msg='✕ Push failed — see console for details';
+    showToast('Push failed'); setSyncStatus('error', msg); console.error(err);
+    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='📊 Push to Sheets'; },3000);
   }
+}
+
+// ══════════════════════════════════════
+// PULL — Sheets → Dashboard (two-way)
+// ══════════════════════════════════════
+async function pullFromSheets() {
+  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbw0bSLOiBicuZuZLLVpgusUu7HzGvC-1nkmqxDLq0qQtWLi6znudhVPZ2MEbN_CT7rvKQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  const btn=document.getElementById('pullBtn');
+  btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
+  setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
+
+  try {
+    const res = await fetch(DASH_SHEETS_URL + '?action=pull');
+    const json = await res.json();
+
+    if (!json.success) throw new Error(json.error||'Pull failed');
+
+    const sheetSessions = json.sessions || [];
+    if (!sheetSessions.length) {
+      btn.classList.remove('syncing');
+      setSyncStatus('info','ℹ️ No sessions found in Google Sheets yet.');
+      showToast('No sessions in Sheets yet');
+      setTimeout(()=>{ btn.textContent='⬇ Pull from Sheets'; },2000);
+      return;
+    }
+
+    // Merge sheet sessions into local state
+    let added=0, updated=0;
+
+    sheetSessions.forEach(sess => {
+      const projName = sess.project;
+      // Find or create the project locally
+      let proj = state.projects.find(p => p.name === projName);
+      if (!proj) {
+        const icons=['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
+        proj = { id: uid(), name: projName, icon: icons[Math.floor(Math.random()*icons.length)], sessions: [] };
+        state.projects.push(proj);
+      }
+
+      // Check if session already exists by matching start timestamp
+      const existingIdx = proj.sessions.findIndex(s => s.start === sess.start);
+      const newSession = { start: sess.start, end: sess.end, seconds: sess.seconds, _sheetId: sess.id };
+
+      if (existingIdx >= 0) {
+        // Update if sheet version differs (user edited in sheet)
+        const existing = proj.sessions[existingIdx];
+        if (existing.seconds !== sess.seconds || existing.end !== sess.end) {
+          proj.sessions[existingIdx] = { ...existing, ...newSession };
+          updated++;
+        }
+      } else {
+        proj.sessions.push(newSession);
+        added++;
+      }
+    });
+
+    saveState();
+    renderAll();
+    renderDashboard();
+
+    btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pulled!';
+    const msg=`✓ Pull complete — ${added} new, ${updated} updated from Google Sheets`;
+    showToast(msg); setSyncStatus('success', msg);
+    setLastSynced();
+    setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='⬇ Pull from Sheets'; },3000);
+
+  } catch(err) {
+    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
+    setSyncStatus('error','✕ Pull failed — check console');
+    showToast('Pull failed'); console.error('Pull error:', err);
+    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='⬇ Pull from Sheets'; },3000);
+  }
+}
+
+// ══════════════════════════════════════
+// SYNC STATUS HELPERS
+// ══════════════════════════════════════
+function setSyncStatus(type, msg) {
+  const bar = document.getElementById('syncStatusBar');
+  bar.className = 'sync-status-bar show ' + type;
+  bar.textContent = msg;
+  if (type === 'success') setTimeout(()=>{ bar.classList.remove('show'); }, 6000);
+}
+
+function setLastSynced() {
+  const now = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
+  localStorage.setItem('ws_last_synced', now);
+}
+
+function getLastSynced() {
+  return localStorage.getItem('ws_last_synced') || null;
 }
 
 // ══════════════════════════════════════
