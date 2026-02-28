@@ -1077,7 +1077,7 @@ function markSynced(ids) {
 }
 
 async function syncToSheets() {
-  if (SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (SHEETS_URL==='https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('syncBtn');
   const syncedIds=getSyncedIds(), payload=[];
   state.projects.forEach(proj => {
@@ -1111,7 +1111,7 @@ async function syncToSheets() {
 // PUSH — Dashboard → Sheets
 // ══════════════════════════════════════
 async function dashSyncToSheets() {
-  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxB63kEQkAxCbaonBzzVp59s8YnoO8svPwMWcTNcg6vr9WPhlhumJ87nmH2P4k2WgyNoQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('dashSyncBtn');
 
   // Build full payload of ALL sessions (not just filtered) so sheet stays complete
@@ -1150,7 +1150,7 @@ async function dashSyncToSheets() {
 // PULL — Sheets → Dashboard (two-way)
 // ══════════════════════════════════════
 async function pullFromSheets() {
-  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxB63kEQkAxCbaonBzzVp59s8YnoO8svPwMWcTNcg6vr9WPhlhumJ87nmH2P4k2WgyNoQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('pullBtn');
   btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
   setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
