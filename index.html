@@ -633,8 +633,8 @@ td .duration-pill {
 // STATE
 // ══════════════════════════════════════
 const STORAGE_KEY = 'ws_time_tracker_v2';
-const SHEETS_URL  = 'https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec';
-const DASH_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec'; // same URL
+const SHEETS_URL  = 'https://script.google.com/macros/s/AKfycbwFYH8hEzQpWOPcdK7gmwbaARn0Xe8_lTnExg8B0Af_b0e60xZ4uu-dd11sfyT6y24VTA/exec';
+const DASH_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwFYH8hEzQpWOPcdK7gmwbaARn0Xe8_lTnExg8B0Af_b0e60xZ4uu-dd11sfyT6y24VTA/exec';
 
 let state = loadState();
 let timerInterval  = null;
@@ -1077,7 +1077,7 @@ function markSynced(ids) {
 }
 
 async function syncToSheets() {
-  if (SHEETS_URL==='https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('syncBtn');
   const syncedIds=getSyncedIds(), payload=[];
   state.projects.forEach(proj => {
@@ -1111,7 +1111,7 @@ async function syncToSheets() {
 // PUSH — Dashboard → Sheets
 // ══════════════════════════════════════
 async function dashSyncToSheets() {
-  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('dashSyncBtn');
 
   // Build full payload of ALL sessions (not just filtered) so sheet stays complete
@@ -1150,13 +1150,17 @@ async function dashSyncToSheets() {
 // PULL — Sheets → Dashboard (two-way)
 // ══════════════════════════════════════
 async function pullFromSheets() {
-  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxG0cuuGOf31qz6z6-c-qAA7sKbys3255kksE7JO8K6dYx22XZZ-X-rqO06fntQ9Hl9CQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('pullBtn');
   btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
   setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
 
   try {
-    const res = await fetch(DASH_SHEETS_URL + '?action=pull');
+    const res = await fetch(DASH_SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'pull' })
+    });
     const json = await res.json();
 
     if (!json.success) throw new Error(json.error||'Pull failed');
