@@ -1111,7 +1111,7 @@ async function syncToSheets() {
 // PUSH — Dashboard → Sheets
 // ══════════════════════════════════════
 async function dashSyncToSheets() {
-  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbw0bSLOiBicuZuZLLVpgusUu7HzGvC-1nkmqxDLq0qQtWLi6znudhVPZ2MEbN_CT7rvKQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxB63kEQkAxCbaonBzzVp59s8YnoO8svPwMWcTNcg6vr9WPhlhumJ87nmH2P4k2WgyNoQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('dashSyncBtn');
 
   // Build full payload of ALL sessions (not just filtered) so sheet stays complete
@@ -1150,7 +1150,7 @@ async function dashSyncToSheets() {
 // PULL — Sheets → Dashboard (two-way)
 // ══════════════════════════════════════
 async function pullFromSheets() {
-  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbw0bSLOiBicuZuZLLVpgusUu7HzGvC-1nkmqxDLq0qQtWLi6znudhVPZ2MEbN_CT7rvKQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbxB63kEQkAxCbaonBzzVp59s8YnoO8svPwMWcTNcg6vr9WPhlhumJ87nmH2P4k2WgyNoQ/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('pullBtn');
   btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
   setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
