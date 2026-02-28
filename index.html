@@ -5,502 +5,631 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WS Lawn Care — Time Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ══════════════════════════════════════
+   BASE
+══════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html, body {
-    font-family: 'IBM Plex Sans', sans-serif;
-    background: #ffffff;
-    margin: 0; padding: 0;
-    width: 100%;
-    height: auto;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    color: #111827;
-    overflow: hidden;
-  }
+html, body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: #f8fafc;
+  color: #111827;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  .demo-bg {
-    position: fixed; inset: 0;
-    background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #f0fdf4 100%);
-    overflow: hidden;
-    z-index: 0;
-    transition: opacity 0.35s ease;
-  }
-  .demo-bg.collapsed {
-    opacity: 0;
-    pointer-events: none;
-  }
-  /* Widget sits at top so iframe can shrink around it */
-  #widget {
-    margin-top: 0 !important;
-  }
-  .demo-bg::before {
-    content: '';
-    position: absolute;
-    width: 600px; height: 600px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(74,222,128,0.10) 0%, transparent 70%);
-    top: 10%; left: 30%;
-  }
+/* ══════════════════════════════════════
+   PAGE LAYOUT
+══════════════════════════════════════ */
+.page-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 48px;
+  gap: 0;
+  min-height: 100vh;
+}
 
-  #widget {
-    position: relative;
-    z-index: 10;
-    width: 380px;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 0 0 1px rgba(74,222,128,0.10);
-    overflow: hidden;
-    user-select: none;
-    cursor: default;
-    transition: box-shadow 0.2s;
-  }
-  #widget:hover {
-    box-shadow: 0 12px 48px rgba(0,0,0,0.13), 0 0 0 1px rgba(74,222,128,0.18);
-  }
+/* ══════════════════════════════════════
+   WIDGET SECTION
+══════════════════════════════════════ */
+.widget-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 20;
+}
 
-  .widget-header {
-    display: flex;
-    align-items: center;
+#widget {
+  width: 380px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 0 0 1px rgba(74,222,128,0.10);
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+  transition: box-shadow 0.2s;
+}
+#widget:hover {
+  box-shadow: 0 12px 48px rgba(0,0,0,0.13), 0 0 0 1px rgba(74,222,128,0.18);
+}
+
+/* ── Widget Header ── */
+.widget-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 12px;
+  background: #f0fdf4;
+  border-bottom: 1px solid #d1fae5;
+  cursor: grab;
+}
+.widget-header:active { cursor: grabbing; }
+.header-left { display: flex; align-items: center; gap: 8px; }
+.logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #16a34a; box-shadow: 0 0 8px rgba(22,163,74,0.5);
+}
+.logo-text {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  font-weight: 600; letter-spacing: 0.12em; color: #15803d; text-transform: uppercase;
+}
+.header-controls { display: flex; gap: 6px; }
+.ctrl-btn {
+  width: 26px; height: 26px; border: none; border-radius: 6px;
+  background: #e2e8f0; color: #6b7280; font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.ctrl-btn:hover { background: #cbd5e1; color: #111827; }
+
+/* ── Timer Bar ── */
+.timer-bar {
+  padding: 12px 16px;
+  background: rgba(74,222,128,0.07);
+  border-bottom: 1px solid #bbf7d0;
+  display: flex; align-items: center; gap: 12px;
+}
+.timer-bar.idle { background: #f9fafb; border-bottom-color: #e5e7eb; }
+.timer-project-name {
+  flex: 1; font-size: 13px; font-weight: 500; color: #111827;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.timer-project-name.idle-text { color: #9ca3af; font-style: italic; }
+.timer-display {
+  font-family: 'IBM Plex Mono', monospace; font-size: 15px;
+  font-weight: 600; color: #16a34a; min-width: 60px; text-align: right;
+}
+.timer-display.idle { color: #9ca3af; }
+.play-stop-btn {
+  width: 30px; height: 30px; border: none; border-radius: 8px;
+  background: #16a34a; color: #fff; font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, transform 0.1s; flex-shrink: 0;
+}
+.play-stop-btn:hover { background: #15803d; transform: scale(1.05); }
+.play-stop-btn.running { background: #f87171; }
+.play-stop-btn.running:hover { background: #ef4444; }
+
+/* ── Search ── */
+.search-wrap {
+  padding: 10px 14px; border-bottom: 1px solid #e5e7eb;
+  display: flex; align-items: center; gap: 8px; background: #fff;
+}
+.search-icon { color: #9ca3af; font-size: 13px; flex-shrink: 0; }
+.search-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 13px;
+  color: #111827; caret-color: #16a34a;
+}
+.search-input::placeholder { color: #9ca3af; }
+
+/* ── Project List ── */
+.project-list {
+  max-height: 220px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: #d1d5db transparent; background: #fff;
+}
+.project-list::-webkit-scrollbar { width: 4px; }
+.project-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+.empty-state {
+  padding: 24px 16px; text-align: center; color: #9ca3af;
+  font-size: 13px; line-height: 1.6;
+}
+.empty-state .empty-icon { display: block; font-size: 24px; margin-bottom: 6px; }
+
+.project-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  cursor: pointer; border-left: 2px solid transparent;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.12s, border-color 0.12s;
+}
+.project-item:last-child { border-bottom: none; }
+.project-item:hover { background: #f0fdf4; border-left-color: #86efac; }
+.project-item.active-project { background: #f0fdf4; border-left-color: #16a34a; }
+.project-icon {
+  width: 28px; height: 28px; border-radius: 7px; background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; flex-shrink: 0;
+}
+.project-item.active-project .project-icon { background: #dcfce7; }
+.project-meta { flex: 1; min-width: 0; }
+.project-title {
+  font-size: 13px; font-weight: 500; color: #1f2937;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.project-item.active-project .project-title { color: #15803d; }
+.project-sub { font-size: 11px; color: #9ca3af; font-family: 'IBM Plex Mono', monospace; margin-top: 1px; }
+.project-time { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6b7280; flex-shrink: 0; min-width: 36px; text-align: right; }
+.delete-btn {
+  width: 22px; height: 22px; border: 1px solid #e5e7eb; border-radius: 5px;
+  background: #fff; color: #9ca3af; font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.delete-btn:hover { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
+
+/* ── Add Project ── */
+.add-project-row {
+  padding: 8px 14px; display: flex; align-items: center; gap: 8px;
+  border-top: 1px solid #e5e7eb; background: #fff;
+}
+.add-input {
+  flex: 1; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 7px;
+  padding: 6px 10px; font-family: 'IBM Plex Sans', sans-serif; font-size: 12px;
+  color: #111827; outline: none; caret-color: #16a34a; transition: border-color 0.15s, background 0.15s;
+}
+.add-input:focus { border-color: #86efac; background: #fff; }
+.add-input::placeholder { color: #9ca3af; }
+.add-btn {
+  padding: 6px 12px; background: #f0fdf4; border: 1px solid #86efac;
+  border-radius: 7px; color: #15803d; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: background 0.15s;
+}
+.add-btn:hover { background: #dcfce7; }
+
+/* ── Filter Tabs ── */
+.filter-tabs {
+  display: flex; gap: 4px; padding: 10px 14px;
+  border-top: 1px solid #e5e7eb; background: #f8fafc;
+}
+.tab {
+  flex: 1; padding: 5px 0; text-align: center; font-size: 10px;
+  font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #9ca3af; border-radius: 5px; cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.tab.active { background: #dcfce7; color: #15803d; }
+.tab:hover:not(.active) { color: #6b7280; background: #f1f5f9; }
+
+/* ── Summary Panel ── */
+.summary-panel { padding: 12px 14px 14px; background: #f8fafc; border-top: 1px solid #e5e7eb; }
+.summary-header { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #9ca3af; margin-bottom: 10px; }
+.summary-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0; border-bottom: 1px solid #f3f4f6;
+}
+.summary-row:last-child { border-bottom: none; }
+.summary-project { font-size: 12px; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.summary-hrs { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6b7280; }
+.summary-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 8px; margin-top: 4px; border-top: 1px solid #bbf7d0;
+}
+.summary-total-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; }
+.summary-total-val { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: #15803d; }
+
+/* ── Widget Footer ── */
+.widget-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; background: #f1f5f9; border-top: 1px solid #e5e7eb;
+}
+.footer-label { font-size: 10px; color: #9ca3af; font-family: 'IBM Plex Mono', monospace; }
+.export-btn {
+  background: none; border: 1px solid #d1d5db; border-radius: 5px;
+  padding: 3px 8px; font-size: 10px; color: #6b7280; cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif; transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.export-btn:hover { border-color: #86efac; color: #15803d; }
+.export-btn.syncing { border-color: #fbbf24; color: #d97706; cursor: wait; }
+.export-btn.synced  { border-color: #86efac; color: #15803d; background: #f0fdf4; }
+.export-btn.error   { border-color: #fca5a5; color: #ef4444; }
+
+/* ══════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════ */
+#dashboard {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Dashboard Header ── */
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.dash-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-title span { font-size: 20px; }
+.dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.dash-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px; font-size: 12px;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+  font-family: 'IBM Plex Sans', sans-serif; border: 1px solid;
+}
+.btn-print {
+  background: #fff; border-color: #d1d5db; color: #374151;
+}
+.btn-print:hover { background: #f9fafb; border-color: #9ca3af; }
+.btn-sheets {
+  background: #15803d; border-color: #15803d; color: #fff;
+}
+.btn-sheets:hover { background: #166534; }
+.btn-sheets.syncing { background: #d97706; border-color: #d97706; cursor: wait; }
+.btn-sheets.synced  { background: #16a34a; border-color: #16a34a; }
+.btn-sheets.error   { background: #ef4444; border-color: #ef4444; }
+
+/* ── Dash Filter Tabs ── */
+.dash-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
+}
+.dash-tab {
+  padding: 6px 16px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase; color: #9ca3af;
+  cursor: pointer; transition: background 0.15s, color 0.15s; user-select: none;
+}
+.dash-tab.active { background: #15803d; color: #fff; }
+.dash-tab:hover:not(.active) { background: #f0fdf4; color: #15803d; }
+
+/* ── KPI Cards ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 700px) { .kpi-row { grid-template-columns: repeat(2,1fr); } }
+
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.15s;
+}
+.kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+.kpi-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #9ca3af;
+}
+.kpi-value {
+  font-family: 'IBM Plex Mono', monospace; font-size: 28px;
+  font-weight: 600; color: #111827; line-height: 1;
+}
+.kpi-sub { font-size: 12px; color: #6b7280; }
+.kpi-card.highlight { background: #f0fdf4; border-color: #bbf7d0; }
+.kpi-card.highlight .kpi-value { color: #15803d; }
+
+/* ── Charts Row ── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+.card-title {
+  font-size: 13px; font-weight: 600; color: #374151;
+  margin-bottom: 16px; display: flex; align-items: center; gap: 6px;
+}
+.card-title .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #16a34a;
+}
+.chart-wrap { position: relative; height: 200px; }
+
+/* ── Project Breakdown (donut legend) ── */
+.donut-wrap { position: relative; height: 160px; }
+.donut-legend { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.legend-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-label { font-size: 12px; color: #374151; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legend-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280; }
+
+/* ── Session Table ── */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+thead tr { border-bottom: 2px solid #e5e7eb; }
+th {
+  padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af;
+  white-space: nowrap;
+}
+tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+}
+tbody tr:hover { background: #f9fafb; }
+tbody tr:last-child { border-bottom: none; }
+td { padding: 10px 12px; color: #374151; vertical-align: middle; }
+td .project-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 5px; padding: 2px 7px; font-size: 11px; color: #15803d; font-weight: 500;
+}
+td .duration-pill {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  background: #f1f5f9; border-radius: 4px; padding: 2px 6px; color: #374151;
+}
+.no-data { text-align: center; padding: 32px; color: #9ca3af; font-size: 13px; }
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: #fff; border: 1px solid #86efac; color: #15803d;
+  font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+  padding: 8px 16px; border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  z-index: 99; transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════
+   PRINT STYLES
+══════════════════════════════════════ */
+@media print {
+  body { background: #fff; }
+  .widget-section, .dash-actions, .dash-filter-wrap, #toast { display: none !important; }
+  .page-wrap { padding: 0; }
+  #dashboard { max-width: 100%; }
+  .card, .kpi-card { break-inside: avoid; box-shadow: none; border: 1px solid #d1d5db; }
+  .kpi-row { grid-template-columns: repeat(4,1fr); }
+  .charts-row { grid-template-columns: 2fr 1fr; }
+  .print-header {
+    display: flex !important;
     justify-content: space-between;
-    padding: 14px 16px 12px;
-    background: #f0fdf4;
-    border-bottom: 1px solid #d1fae5;
-    cursor: grab;
-  }
-  .widget-header:active { cursor: grabbing; }
-  .header-left { display: flex; align-items: center; gap: 8px; }
-  .logo-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #16a34a;
-    box-shadow: 0 0 8px rgba(22,163,74,0.5);
-  }
-  .logo-text {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    color: #15803d;
-    text-transform: uppercase;
-  }
-  .header-controls { display: flex; gap: 6px; }
-  .ctrl-btn {
-    width: 26px; height: 26px;
-    border: none;
-    border-radius: 6px;
-    background: #e2e8f0;
-    color: #6b7280;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
     align-items: center;
-    justify-content: center;
-    transition: background 0.15s, color 0.15s;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #15803d;
   }
-  .ctrl-btn:hover { background: #cbd5e1; color: #111827; }
-
-  .timer-bar {
-    padding: 12px 16px;
-    background: rgba(74,222,128,0.07);
-    border-bottom: 1px solid #bbf7d0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .timer-bar.idle { background: #f9fafb; border-bottom-color: #e5e7eb; }
-  .timer-project-name {
-    flex: 1;
-    font-size: 13px;
-    font-weight: 500;
-    color: #111827;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .timer-project-name.idle-text { color: #9ca3af; font-style: italic; }
-  .timer-display {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 15px;
-    font-weight: 600;
-    color: #16a34a;
-    min-width: 60px;
-    text-align: right;
-  }
-  .timer-display.idle { color: #9ca3af; }
-  .play-stop-btn {
-    width: 30px; height: 30px;
-    border: none;
-    border-radius: 8px;
-    background: #16a34a;
-    color: #ffffff;
-    font-size: 11px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s, transform 0.1s;
-    flex-shrink: 0;
-  }
-  .play-stop-btn:hover { background: #15803d; transform: scale(1.05); }
-  .play-stop-btn.running { background: #f87171; }
-  .play-stop-btn.running:hover { background: #ef4444; }
-
-  .search-wrap {
-    padding: 10px 14px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-  }
-  .search-icon { color: #9ca3af; font-size: 13px; flex-shrink: 0; }
-  .search-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 13px;
-    color: #111827;
-    caret-color: #16a34a;
-  }
-  .search-input::placeholder { color: #9ca3af; }
-
-  .project-list {
-    max-height: 220px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #d1d5db transparent;
-    background: #fff;
-  }
-  .project-list::-webkit-scrollbar { width: 4px; }
-  .project-list::-webkit-scrollbar-track { background: transparent; }
-  .project-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
-
-  .empty-state {
-    padding: 24px 16px;
-    text-align: center;
-    color: #9ca3af;
-    font-size: 13px;
-    line-height: 1.6;
-  }
-  .empty-state .empty-icon { display: block; font-size: 24px; margin-bottom: 6px; }
-
-  .project-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    cursor: pointer;
-    border-left: 2px solid transparent;
-    border-bottom: 1px solid #f3f4f6;
-    transition: background 0.12s, border-color 0.12s;
-  }
-  .project-item:last-child { border-bottom: none; }
-  .project-item:hover { background: #f0fdf4; border-left-color: #86efac; }
-  .project-item.active-project { background: #f0fdf4; border-left-color: #16a34a; }
-
-  .project-icon {
-    width: 28px; height: 28px;
-    border-radius: 7px;
-    background: #f1f5f9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    flex-shrink: 0;
-  }
-  .project-item.active-project .project-icon { background: #dcfce7; }
-
-  .project-meta { flex: 1; min-width: 0; }
-  .project-title {
-    font-size: 13px;
-    font-weight: 500;
-    color: #1f2937;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .project-item.active-project .project-title { color: #15803d; }
-  .project-sub {
-    font-size: 11px;
-    color: #9ca3af;
-    font-family: 'IBM Plex Mono', monospace;
-    margin-top: 1px;
-  }
-  .project-time {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
-    color: #6b7280;
-    flex-shrink: 0;
-    min-width: 36px;
-    text-align: right;
-  }
-
-  /* Always-visible delete button */
-  .delete-btn {
-    width: 22px; height: 22px;
-    border: 1px solid #e5e7eb;
-    border-radius: 5px;
-    background: #fff;
-    color: #9ca3af;
-    font-size: 11px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-  }
-  .delete-btn:hover { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
-
-  .add-project-row {
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-top: 1px solid #e5e7eb;
-    background: #fff;
-  }
-  .add-input {
-    flex: 1;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 7px;
-    padding: 6px 10px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 12px;
-    color: #111827;
-    outline: none;
-    caret-color: #16a34a;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  .add-input:focus { border-color: #86efac; background: #fff; }
-  .add-input::placeholder { color: #9ca3af; }
-  .add-btn {
-    padding: 6px 12px;
-    background: #f0fdf4;
-    border: 1px solid #86efac;
-    border-radius: 7px;
-    color: #15803d;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s;
-  }
-  .add-btn:hover { background: #dcfce7; }
-
-  .filter-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 10px 14px;
-    border-top: 1px solid #e5e7eb;
-    background: #f8fafc;
-  }
-  .tab {
-    flex: 1;
-    padding: 5px 0;
-    text-align: center;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #9ca3af;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s;
-  }
-  .tab.active { background: #dcfce7; color: #15803d; }
-  .tab:hover:not(.active) { color: #6b7280; background: #f1f5f9; }
-
-  .summary-panel {
-    padding: 12px 14px 14px;
-    background: #f8fafc;
-    border-top: 1px solid #e5e7eb;
-  }
-  .summary-header {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #9ca3af;
-    margin-bottom: 10px;
-  }
-  .summary-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 5px 0;
-    border-bottom: 1px solid #f3f4f6;
-  }
-  .summary-row:last-child { border-bottom: none; }
-  .summary-project {
-    font-size: 12px;
-    color: #374151;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-  }
-  .summary-hrs {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
-    color: #6b7280;
-  }
-  .summary-total-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 8px;
-    margin-top: 4px;
-    border-top: 1px solid #bbf7d0;
-  }
-  .summary-total-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .summary-total-val {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
-    font-weight: 600;
-    color: #15803d;
-  }
-
-  .widget-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 14px;
-    background: #f1f5f9;
-    border-top: 1px solid #e5e7eb;
-  }
-  .footer-label {
-    font-size: 10px;
-    color: #9ca3af;
-    font-family: 'IBM Plex Mono', monospace;
-  }
-  .export-btn {
-    background: none;
-    border: 1px solid #d1d5db;
-    border-radius: 5px;
-    padding: 3px 8px;
-    font-size: 10px;
-    color: #6b7280;
-    cursor: pointer;
-    font-family: 'IBM Plex Sans', sans-serif;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-  }
-  .export-btn:hover { border-color: #86efac; color: #15803d; }
-  .export-btn.syncing { border-color: #fbbf24; color: #d97706; cursor: wait; }
-  .export-btn.synced  { border-color: #86efac; color: #15803d; background: #f0fdf4; }
-  .export-btn.error   { border-color: #fca5a5; color: #ef4444; }
-
-  #toast {
-    position: fixed;
-    bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(60px);
-    background: #fff;
-    border: 1px solid #86efac;
-    color: #15803d;
-    font-size: 12px;
-    font-family: 'IBM Plex Mono', monospace;
-    padding: 8px 16px;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    z-index: 99;
-    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
-    pointer-events: none;
-  }
-  #toast.show { transform: translateX(-50%) translateY(0); }
+  .print-header h1 { font-size: 18px; color: #15803d; }
+  .print-header p { font-size: 12px; color: #6b7280; }
+}
+.print-header { display: none; }
 </style>
 </head>
 <body>
-<div class="demo-bg"></div>
 
-<div id="widget">
-  <div class="widget-header" id="dragBar">
-    <div class="header-left">
-      <div class="logo-dot" id="pulseDot"></div>
-      <span class="logo-text">WS Time Tracker</span>
-    </div>
-    <div class="header-controls">
-      <button class="ctrl-btn" id="minimizeBtn" title="Minimize/Expand" onclick="toggleMinimize()">─</button>
+<div class="page-wrap">
+
+  <!-- ══ WIDGET ══ -->
+  <div class="widget-section">
+    <div id="widget">
+      <div class="widget-header" id="dragBar">
+        <div class="header-left">
+          <div class="logo-dot" id="pulseDot"></div>
+          <span class="logo-text">WS Time Tracker</span>
+        </div>
+        <div class="header-controls">
+          <button class="ctrl-btn" id="minimizeBtn" title="Minimize/Expand" onclick="toggleMinimize()">─</button>
+        </div>
+      </div>
+
+      <div id="mainBody">
+        <div class="timer-bar idle" id="timerBar">
+          <div class="project-icon" id="timerIcon">⏸</div>
+          <div class="timer-project-name idle-text" id="timerProjectName">No active timer</div>
+          <div class="timer-display idle" id="timerDisplay">00:00</div>
+          <button class="play-stop-btn" id="playStopBtn" onclick="toggleTimer()">▶</button>
+        </div>
+
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input class="search-input" id="searchInput" placeholder="Search projects…" oninput="filterProjects()">
+        </div>
+
+        <div class="project-list" id="projectList"></div>
+
+        <div class="add-project-row">
+          <input class="add-input" id="newProjectInput" placeholder="New project name…" onkeydown="if(event.key==='Enter')addProject()">
+          <button class="add-btn" onclick="addProject()">+ Add</button>
+        </div>
+
+        <div class="filter-tabs">
+          <div class="tab active" onclick="setFilter('day',this)">Day</div>
+          <div class="tab" onclick="setFilter('week',this)">Week</div>
+          <div class="tab" onclick="setFilter('month',this)">Month</div>
+          <div class="tab" onclick="setFilter('year',this)">Year</div>
+        </div>
+
+        <div class="summary-panel">
+          <div class="summary-header" id="summaryHeader">Today's Summary</div>
+          <div class="summary-rows" id="summaryRows"></div>
+          <div class="summary-total-row">
+            <span class="summary-total-label">Total</span>
+            <span class="summary-total-val" id="summaryTotal">0h 00m</span>
+          </div>
+        </div>
+
+        <div class="widget-footer">
+          <span class="footer-label" id="footerDate"></span>
+          <button class="export-btn" id="syncBtn" onclick="syncToSheets()">↑ Sync to Sheets</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div id="mainBody">
-    <div class="timer-bar idle" id="timerBar">
-      <div class="project-icon" id="timerIcon">⏸</div>
-      <div class="timer-project-name idle-text" id="timerProjectName">No active timer</div>
-      <div class="timer-display idle" id="timerDisplay">00:00</div>
-      <button class="play-stop-btn" id="playStopBtn" onclick="toggleTimer()">▶</button>
-    </div>
+  <!-- ══ DASHBOARD ══ -->
+  <div id="dashboard">
 
-    <div class="search-wrap">
-      <span class="search-icon">⌕</span>
-      <input class="search-input" id="searchInput" placeholder="Search projects…" oninput="filterProjects()">
-    </div>
-
-    <div class="project-list" id="projectList"></div>
-
-    <div class="add-project-row">
-      <input class="add-input" id="newProjectInput" placeholder="New project name…" onkeydown="if(event.key==='Enter')addProject()">
-      <button class="add-btn" onclick="addProject()">+ Add</button>
-    </div>
-
-    <div class="filter-tabs">
-      <div class="tab active" onclick="setFilter('day',this)">Day</div>
-      <div class="tab" onclick="setFilter('week',this)">Week</div>
-      <div class="tab" onclick="setFilter('month',this)">Month</div>
-      <div class="tab" onclick="setFilter('year',this)">Year</div>
-    </div>
-
-    <div class="summary-panel">
-      <div class="summary-header" id="summaryHeader">Today's Summary</div>
-      <div class="summary-rows" id="summaryRows"></div>
-      <div class="summary-total-row">
-        <span class="summary-total-label">Total</span>
-        <span class="summary-total-val" id="summaryTotal">0h 00m</span>
+    <!-- Print-only header -->
+    <div class="print-header">
+      <div>
+        <h1>🌿 WS Lawn Care — Time Report</h1>
+        <p>Generated: <span id="printDate"></span></p>
+      </div>
+      <div style="text-align:right;font-size:12px;color:#6b7280;">
+        <div id="printPeriod"></div>
+        <div>wslauncareservicesllc.com</div>
       </div>
     </div>
 
-    <div class="widget-footer">
-      <span class="footer-label" id="footerDate"></span>
-      <button class="export-btn" id="syncBtn" onclick="syncToSheets()">↑ Sync to Sheets</button>
+    <!-- Dash Header -->
+    <div class="dash-header">
+      <div>
+        <div class="dash-title"><span>📊</span> Activity Dashboard</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <!-- Dash Filter -->
+        <div class="dash-filter-wrap">
+          <div class="dash-tab active" onclick="setDashFilter('day',this)">Day</div>
+          <div class="dash-tab" onclick="setDashFilter('week',this)">Week</div>
+          <div class="dash-tab" onclick="setDashFilter('month',this)">Month</div>
+          <div class="dash-tab" onclick="setDashFilter('year',this)">Year</div>
+        </div>
+        <!-- Actions -->
+        <div class="dash-actions">
+          <button class="dash-btn btn-print" onclick="printDashboard()">🖨 Print PDF</button>
+          <button class="dash-btn btn-sheets" id="dashSyncBtn" onclick="dashSyncToSheets()">📊 Export to Sheets</button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-row">
+      <div class="kpi-card highlight">
+        <div class="kpi-label">Total Hours</div>
+        <div class="kpi-value" id="kpiTotal">0h 0m</div>
+        <div class="kpi-sub" id="kpiPeriodLabel">Today</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Sessions</div>
+        <div class="kpi-value" id="kpiSessions">0</div>
+        <div class="kpi-sub">Time entries</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Session</div>
+        <div class="kpi-value" id="kpiAvg">—</div>
+        <div class="kpi-sub">Per entry</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Top Project</div>
+        <div class="kpi-value" id="kpiTopProject" style="font-size:15px;padding-top:4px;">—</div>
+        <div class="kpi-sub" id="kpiTopHours">No data yet</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+      <!-- Bar Chart -->
+      <div class="card">
+        <div class="card-title"><div class="dot"></div><span id="barChartTitle">Hours by Day</span></div>
+        <div class="chart-wrap">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+      <!-- Donut -->
+      <div class="card">
+        <div class="card-title"><div class="dot"></div>By Project</div>
+        <div class="donut-wrap">
+          <canvas id="donutChart"></canvas>
+        </div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+    <!-- Session Table -->
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>Session Log</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Project</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody id="sessionTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end dashboard -->
+</div><!-- end page-wrap -->
 
 <div id="toast"></div>
 
 <script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
 const STORAGE_KEY = 'ws_time_tracker_v2';
+const SHEETS_URL  = 'YOUR_APPS_SCRIPT_URL_HERE';
+const DASH_SHEETS_URL = 'YOUR_APPS_SCRIPT_URL_HERE'; // same URL
+
 let state = loadState();
-let timerInterval = null;
-let currentFilter = 'day';
-let minimized = false;
+let timerInterval  = null;
+let currentFilter  = 'day';   // widget filter
+let dashFilter     = 'day';   // dashboard filter
+let minimized      = false;
+let barChartInst   = null;
+let donutChartInst = null;
 
 function defaultState() {
   return { projects: [], activeProjectId: null, activeStart: null };
 }
-
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : defaultState();
-  } catch { return defaultState(); }
+  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : defaultState(); }
+  catch { return defaultState(); }
 }
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function uid() { return Math.random().toString(36).slice(2, 10); }
+function uid() { return Math.random().toString(36).slice(2,10); }
 
+// ══════════════════════════════════════
+// TIMER
+// ══════════════════════════════════════
 function toggleTimer() {
   if (state.activeProjectId) stopTimer();
   else showToast('Click a project to start tracking');
@@ -511,8 +640,7 @@ function startTimer(id) {
   state.activeProjectId = id;
   state.activeStart = Date.now();
   saveState();
-  renderProjects();
-  renderTimerBar();
+  renderProjects(); renderTimerBar();
   clearInterval(timerInterval);
   timerInterval = setInterval(tickTimer, 1000);
   startPulse();
@@ -529,9 +657,8 @@ function stopTimer() {
   state.activeStart = null;
   saveState();
   clearInterval(timerInterval);
-  renderTimerBar();
-  renderProjects();
-  renderSummary();
+  renderTimerBar(); renderProjects(); renderSummary();
+  renderDashboard();
   stopPulse();
 }
 
@@ -541,302 +668,488 @@ function tickTimer() {
   renderSummary();
 }
 
+// ══════════════════════════════════════
+// FORMAT HELPERS
+// ══════════════════════════════════════
 function formatMM(sec) {
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
-function formatHM(sec) {
-  return `${Math.floor(sec/3600)}h ${pad(Math.floor((sec%3600)/60))}m`;
-}
+function formatHM(sec) { return `${Math.floor(sec/3600)}h ${pad(Math.floor((sec%3600)/60))}m`; }
+function formatHMdec(sec) { return (sec/3600).toFixed(2) + 'h'; }
 function pad(n) { return String(n).padStart(2,'0'); }
 
-function sessionInFilter(sess) {
+function fmtDate(ts) {
+  return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+}
+
+// ══════════════════════════════════════
+// FILTER HELPERS
+// ══════════════════════════════════════
+function sessionInFilter(sess, filter) {
   const d = new Date(sess.start), now = new Date();
-  if (currentFilter === 'day') return d.toDateString() === now.toDateString();
-  if (currentFilter === 'week') { const w = new Date(); w.setDate(now.getDate()-7); return d >= w; }
-  if (currentFilter === 'month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
-  if (currentFilter === 'year') return d.getFullYear()===now.getFullYear();
+  if (filter === 'day')   return d.toDateString() === now.toDateString();
+  if (filter === 'week')  { const w = new Date(); w.setDate(now.getDate()-7); return d >= w; }
+  if (filter === 'month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  if (filter === 'year')  return d.getFullYear()===now.getFullYear();
   return false;
 }
 
+function sessionInWidgetFilter(sess) { return sessionInFilter(sess, currentFilter); }
+function sessionInDashFilter(sess)   { return sessionInFilter(sess, dashFilter); }
+
 function projectSecondsInFilter(proj) {
-  let total = proj.sessions.filter(sessionInFilter).reduce((a,s) => a+s.seconds, 0);
-  if (proj.id === state.activeProjectId && state.activeStart)
-    total += Math.floor((Date.now() - state.activeStart) / 1000);
+  let total = proj.sessions.filter(sessionInWidgetFilter).reduce((a,s)=>a+s.seconds,0);
+  if (proj.id===state.activeProjectId && state.activeStart)
+    total += Math.floor((Date.now()-state.activeStart)/1000);
   return total;
 }
 
+// ══════════════════════════════════════
+// WIDGET RENDER
+// ══════════════════════════════════════
 function renderTimerBar() {
-  const bar = document.getElementById('timerBar');
-  const nameEl = document.getElementById('timerProjectName');
-  const dispEl = document.getElementById('timerDisplay');
-  const btn = document.getElementById('playStopBtn');
-  const icon = document.getElementById('timerIcon');
-
+  const bar=document.getElementById('timerBar'), nameEl=document.getElementById('timerProjectName');
+  const dispEl=document.getElementById('timerDisplay'), btn=document.getElementById('playStopBtn');
+  const icon=document.getElementById('timerIcon');
   if (state.activeProjectId) {
-    const proj = state.projects.find(p => p.id === state.activeProjectId);
-    bar.classList.remove('idle');
-    nameEl.classList.remove('idle-text');
-    nameEl.textContent = proj ? proj.name : 'Unknown';
-    icon.textContent = proj ? proj.icon : '▶';
-    dispEl.textContent = formatMM(Math.floor((Date.now() - state.activeStart) / 1000));
-    dispEl.classList.remove('idle');
-    btn.classList.add('running');
-    btn.textContent = '■';
+    const proj=state.projects.find(p=>p.id===state.activeProjectId);
+    bar.classList.remove('idle'); nameEl.classList.remove('idle-text');
+    nameEl.textContent=proj?proj.name:'Unknown'; icon.textContent=proj?proj.icon:'▶';
+    dispEl.textContent=formatMM(Math.floor((Date.now()-state.activeStart)/1000));
+    dispEl.classList.remove('idle'); btn.classList.add('running'); btn.textContent='■';
   } else {
-    bar.classList.add('idle');
-    nameEl.classList.add('idle-text');
-    nameEl.textContent = 'No active timer';
-    icon.textContent = '⏸';
-    dispEl.textContent = '00:00';
-    dispEl.classList.add('idle');
-    btn.classList.remove('running');
-    btn.textContent = '▶';
+    bar.classList.add('idle'); nameEl.classList.add('idle-text');
+    nameEl.textContent='No active timer'; icon.textContent='⏸';
+    dispEl.textContent='00:00'; dispEl.classList.add('idle');
+    btn.classList.remove('running'); btn.textContent='▶';
   }
 }
 
 function renderProjects() {
-  const query = document.getElementById('searchInput').value.toLowerCase();
-  const list = document.getElementById('projectList');
-  list.innerHTML = '';
-
-  const filtered = state.projects.filter(p => p.name.toLowerCase().includes(query));
-
-  if (filtered.length === 0) {
-    list.innerHTML = `<div class="empty-state"><span class="empty-icon">🌿</span>No projects yet.<br>Add your first project below.</div>`;
+  const query=document.getElementById('searchInput').value.toLowerCase();
+  const list=document.getElementById('projectList');
+  list.innerHTML='';
+  const filtered=state.projects.filter(p=>p.name.toLowerCase().includes(query));
+  if (!filtered.length) {
+    list.innerHTML=`<div class="empty-state"><span class="empty-icon">🌿</span>No projects yet.<br>Add your first project below.</div>`;
     return;
   }
-
   filtered.forEach(proj => {
-    const secs = projectSecondsInFilter(proj);
-    const isActive = proj.id === state.activeProjectId;
-    const div = document.createElement('div');
-    div.className = 'project-item' + (isActive ? ' active-project' : '');
-    div.dataset.id = proj.id;
-    div.innerHTML = `
+    const secs=projectSecondsInFilter(proj), isActive=proj.id===state.activeProjectId;
+    const div=document.createElement('div');
+    div.className='project-item'+(isActive?' active-project':'');
+    div.dataset.id=proj.id;
+    div.innerHTML=`
       <div class="project-icon">${proj.icon}</div>
       <div class="project-meta">
         <div class="project-title">${proj.name}</div>
-        <div class="project-sub">${secs > 0 ? formatHM(secs) : '—'}</div>
+        <div class="project-sub">${secs>0?formatHM(secs):'—'}</div>
       </div>
-      <div class="project-time">${secs > 0 ? formatMM(secs) : ''}</div>
-      <button class="delete-btn" title="Delete project">✕</button>
-    `;
-
-    div.addEventListener('click', (e) => {
+      <div class="project-time">${secs>0?formatMM(secs):''}</div>
+      <button class="delete-btn" title="Delete project">✕</button>`;
+    div.addEventListener('click', e => {
       if (e.target.closest('.delete-btn')) return;
       isActive ? stopTimer() : startTimer(proj.id);
     });
-
-    div.querySelector('.delete-btn').addEventListener('click', (e) => {
+    div.querySelector('.delete-btn').addEventListener('click', e => {
       e.stopPropagation();
-      if (confirm(`Delete "${proj.name}"?\nThis will remove all logged time for this project.`)) {
-        if (state.activeProjectId === proj.id) stopTimer();
-        state.projects = state.projects.filter(p => p.id !== proj.id);
-        saveState();
-        renderAll();
+      if (confirm(`Delete "${proj.name}"?\nThis removes all logged time.`)) {
+        if (state.activeProjectId===proj.id) stopTimer();
+        state.projects=state.projects.filter(p=>p.id!==proj.id);
+        saveState(); renderAll(); renderDashboard();
         showToast(`Deleted "${proj.name}"`);
       }
     });
-
     list.appendChild(div);
   });
 }
 
 function renderSummary() {
-  const rows = document.getElementById('summaryRows');
-  rows.innerHTML = '';
-  let total = 0;
-  const labels = {day:'Today',week:'This Week',month:'This Month',year:'This Year'};
-  document.getElementById('summaryHeader').textContent = `${labels[currentFilter]}'s Summary`;
-
+  const rows=document.getElementById('summaryRows');
+  rows.innerHTML='';
+  let total=0;
+  const labels={day:'Today',week:'This Week',month:'This Month',year:'This Year'};
+  document.getElementById('summaryHeader').textContent=`${labels[currentFilter]}'s Summary`;
   state.projects.forEach(proj => {
-    const secs = projectSecondsInFilter(proj);
-    if (secs === 0) return;
-    total += secs;
-    const row = document.createElement('div');
-    row.className = 'summary-row';
-    row.innerHTML = `<span class="summary-project">${proj.icon} ${proj.name}</span><span class="summary-hrs">${formatHM(secs)}</span>`;
+    const secs=projectSecondsInFilter(proj);
+    if (!secs) return;
+    total+=secs;
+    const row=document.createElement('div');
+    row.className='summary-row';
+    row.innerHTML=`<span class="summary-project">${proj.icon} ${proj.name}</span><span class="summary-hrs">${formatHM(secs)}</span>`;
     rows.appendChild(row);
   });
-
-  document.getElementById('summaryTotal').textContent = formatHM(total);
-  if (rows.children.length === 0)
-    rows.innerHTML = `<div style="font-size:12px;color:#9ca3af;padding:6px 0;">No time logged yet.</div>`;
+  document.getElementById('summaryTotal').textContent=formatHM(total);
+  if (!rows.children.length)
+    rows.innerHTML=`<div style="font-size:12px;color:#9ca3af;padding:6px 0;">No time logged yet.</div>`;
 }
 
 function renderAll() { renderTimerBar(); renderProjects(); renderSummary(); }
 function filterProjects() { renderProjects(); }
 
 function setFilter(f, tab) {
-  currentFilter = f;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  currentFilter=f;
+  document.querySelectorAll('.filter-tabs .tab').forEach(t=>t.classList.remove('active'));
   tab.classList.add('active');
-  renderSummary();
-  renderProjects();
+  renderSummary(); renderProjects();
 }
 
 function addProject() {
-  const input = document.getElementById('newProjectInput');
-  const name = input.value.trim();
+  const input=document.getElementById('newProjectInput');
+  const name=input.value.trim();
   if (!name) { showToast('Enter a project name first'); return; }
-  const icons = ['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
-  state.projects.push({ id: uid(), name, icon: icons[Math.floor(Math.random()*icons.length)], sessions: [] });
-  saveState();
-  input.value = '';
-  renderAll();
+  const icons=['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
+  state.projects.push({id:uid(),name,icon:icons[Math.floor(Math.random()*icons.length)],sessions:[]});
+  saveState(); input.value=''; renderAll(); renderDashboard();
   showToast(`Added "${name}"`);
 }
 
+// ══════════════════════════════════════
+// DASHBOARD RENDER
+// ══════════════════════════════════════
+const CHART_COLORS = ['#16a34a','#2563eb','#d97706','#9333ea','#ef4444','#0891b2','#ca8a04','#be185d'];
+
+function setDashFilter(f, tab) {
+  dashFilter = f;
+  document.querySelectorAll('.dash-tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  renderDashboard();
+}
+
+function getAllDashSessions() {
+  const all = [];
+  state.projects.forEach(proj => {
+    proj.sessions.filter(s=>sessionInDashFilter(s)).forEach(sess => {
+      all.push({ ...sess, projectName: proj.name, projectIcon: proj.icon });
+    });
+  });
+  return all;
+}
+
+function renderDashboard() {
+  const sessions = getAllDashSessions();
+  const totalSec = sessions.reduce((a,s)=>a+s.seconds, 0);
+  const labels = {day:'Today',week:'This Week',month:'This Month',year:'This Year'};
+
+  // KPIs
+  document.getElementById('kpiTotal').textContent = formatHM(totalSec);
+  document.getElementById('kpiPeriodLabel').textContent = labels[dashFilter];
+  document.getElementById('kpiSessions').textContent = sessions.length;
+  const avgSec = sessions.length ? Math.round(totalSec/sessions.length) : 0;
+  document.getElementById('kpiAvg').textContent = sessions.length ? formatHM(avgSec) : '—';
+  document.getElementById('printDate').textContent = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('printPeriod').textContent = `Period: ${labels[dashFilter]}`;
+
+  // Top project
+  let topProj = null, topSec = 0;
+  state.projects.forEach(proj => {
+    const secs = proj.sessions.filter(s=>sessionInDashFilter(s)).reduce((a,s)=>a+s.seconds,0);
+    if (secs > topSec) { topSec = secs; topProj = proj; }
+  });
+  document.getElementById('kpiTopProject').textContent = topProj ? `${topProj.icon} ${topProj.name}` : '—';
+  document.getElementById('kpiTopHours').textContent = topProj ? formatHM(topSec) : 'No data yet';
+
+  renderBarChart(sessions);
+  renderDonut();
+  renderTable(sessions);
+}
+
+function renderBarChart(sessions) {
+  const canvas = document.getElementById('barChart');
+  const ctx = canvas.getContext('2d');
+  if (barChartInst) { barChartInst.destroy(); barChartInst = null; }
+
+  let labels=[], data=[];
+
+  if (dashFilter === 'day') {
+    // Hours by hour of day
+    document.getElementById('barChartTitle').textContent = 'Hours by Hour (Today)';
+    const byHour = {};
+    sessions.forEach(s => {
+      const h = new Date(s.start).getHours();
+      byHour[h] = (byHour[h]||0) + s.seconds;
+    });
+    const hours = [...new Set(Object.keys(byHour).map(Number))].sort((a,b)=>a-b);
+    if (!hours.length) {
+      // show 6am-6pm skeleton
+      for (let h=6;h<=18;h++) { labels.push(h%12||12)+(h<12?'am':'pm'); data.push(0); }
+    } else {
+      const mn=Math.min(...hours), mx=Math.max(...hours);
+      for (let h=mn;h<=mx;h++) {
+        labels.push((h%12||12)+(h<12?'am':'pm'));
+        data.push(+(( byHour[h]||0)/3600).toFixed(2));
+      }
+    }
+  } else if (dashFilter === 'week') {
+    document.getElementById('barChartTitle').textContent = 'Hours by Day (Last 7 Days)';
+    const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const byDay={};
+    sessions.forEach(s=>{ const d=new Date(s.start).getDay(); byDay[d]=(byDay[d]||0)+s.seconds; });
+    for(let i=0;i<7;i++){ labels.push(days[i]); data.push(+((byDay[i]||0)/3600).toFixed(2)); }
+  } else if (dashFilter === 'month') {
+    document.getElementById('barChartTitle').textContent = 'Hours by Week (This Month)';
+    const byWeek={};
+    sessions.forEach(s=>{
+      const d=new Date(s.start), wk=Math.ceil(d.getDate()/7);
+      byWeek[wk]=(byWeek[wk]||0)+s.seconds;
+    });
+    for(let w=1;w<=5;w++){ labels.push(`Wk ${w}`); data.push(+((byWeek[w]||0)/3600).toFixed(2)); }
+  } else {
+    document.getElementById('barChartTitle').textContent = 'Hours by Month (This Year)';
+    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const byMonth={};
+    sessions.forEach(s=>{ const m=new Date(s.start).getMonth(); byMonth[m]=(byMonth[m]||0)+s.seconds; });
+    months.forEach((m,i)=>{ labels.push(m); data.push(+((byMonth[i]||0)/3600).toFixed(2)); });
+  }
+
+  barChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Hours',
+        data,
+        backgroundColor: 'rgba(22,163,74,0.75)',
+        borderColor: '#15803d',
+        borderWidth: 1,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}h` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9ca3af' } },
+        y: {
+          beginAtZero: true,
+          ticks: { font: { size: 10 }, color: '#9ca3af', callback: v => v+'h' },
+          grid: { color: '#f3f4f6' }
+        }
+      }
+    }
+  });
+}
+
+function renderDonut() {
+  const canvas = document.getElementById('donutChart');
+  const ctx = canvas.getContext('2d');
+  if (donutChartInst) { donutChartInst.destroy(); donutChartInst=null; }
+
+  const projData = state.projects.map((proj,i) => ({
+    name: proj.name, icon: proj.icon,
+    secs: proj.sessions.filter(s=>sessionInDashFilter(s)).reduce((a,s)=>a+s.seconds,0),
+    color: CHART_COLORS[i % CHART_COLORS.length]
+  })).filter(p=>p.secs>0).sort((a,b)=>b.secs-a.secs);
+
+  const legend = document.getElementById('donutLegend');
+  legend.innerHTML = '';
+
+  if (!projData.length) {
+    canvas.style.display='none';
+    legend.innerHTML='<div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px 0;">No data yet</div>';
+    return;
+  }
+  canvas.style.display='';
+
+  donutChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: projData.map(p=>p.name),
+      datasets: [{ data: projData.map(p=>+(p.secs/3600).toFixed(2)), backgroundColor: projData.map(p=>p.color), borderWidth: 2, borderColor:'#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}h` } } }
+    }
+  });
+
+  const total = projData.reduce((a,p)=>a+p.secs,0);
+  projData.forEach(p => {
+    const pct = total ? Math.round(p.secs/total*100) : 0;
+    const row = document.createElement('div');
+    row.className='legend-row';
+    row.innerHTML=`<div class="legend-dot" style="background:${p.color}"></div><span class="legend-label">${p.icon} ${p.name}</span><span class="legend-val">${formatHMdec(p.secs)} (${pct}%)</span>`;
+    legend.appendChild(row);
+  });
+}
+
+function renderTable(sessions) {
+  const tbody = document.getElementById('sessionTableBody');
+  tbody.innerHTML='';
+
+  const sorted = [...sessions].sort((a,b)=>b.start-a.start);
+
+  if (!sorted.length) {
+    tbody.innerHTML=`<tr><td colspan="5" class="no-data">🌿 No sessions in this period</td></tr>`;
+    return;
+  }
+
+  sorted.forEach(sess => {
+    const tr = document.createElement('tr');
+    tr.innerHTML=`
+      <td>${fmtDate(sess.start)}</td>
+      <td><span class="project-badge">${sess.projectIcon} ${sess.projectName}</span></td>
+      <td>${fmtTime(sess.start)}</td>
+      <td>${fmtTime(sess.end)}</td>
+      <td><span class="duration-pill">${formatHM(sess.seconds)}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ══════════════════════════════════════
+// MINIMIZE / COLLAPSE (widget only)
+// ══════════════════════════════════════
 const COLLAPSED_HEIGHT = 52;
 
 function toggleMinimize() {
   minimized = !minimized;
   const body = document.getElementById('mainBody');
-  const bg = document.querySelector('.demo-bg');
-  const btn = document.getElementById('minimizeBtn');
-
+  const btn  = document.getElementById('minimizeBtn');
   if (minimized) {
-    body.style.display = 'none';
-    bg.classList.add('collapsed');
-    btn.textContent = '□';
-    window.parent.postMessage({ type: 'ws-tracker-resize', height: COLLAPSED_HEIGHT }, '*');
+    body.style.display='none';
+    btn.textContent='□';
+    window.parent.postMessage({type:'ws-tracker-resize', height: COLLAPSED_HEIGHT},'*');
   } else {
-    body.style.display = '';
-    bg.classList.remove('collapsed');
-    btn.textContent = '─';
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        notifyHeight();
-      });
-    });
+    body.style.display='';
+    btn.textContent='─';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>notifyHeight()));
   }
 }
 
 function notifyHeight() {
   const h = document.getElementById('widget').scrollHeight;
-  window.parent.postMessage({ type: 'ws-tracker-resize', height: h + 24 }, '*');
+  window.parent.postMessage({type:'ws-tracker-resize', height: h+24},'*');
 }
 
-function startPulse() { document.getElementById('pulseDot').style.animation = 'pulse 1.2s ease-in-out infinite'; }
-function stopPulse()  { document.getElementById('pulseDot').style.animation = ''; }
-const ps = document.createElement('style');
-ps.textContent = `@keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(22,163,74,0.4)}50%{box-shadow:0 0 12px rgba(22,163,74,0.8)}}`;
+// ══════════════════════════════════════
+// PULSE
+// ══════════════════════════════════════
+function startPulse() { document.getElementById('pulseDot').style.animation='pulse 1.2s ease-in-out infinite'; }
+function stopPulse()  { document.getElementById('pulseDot').style.animation=''; }
+const ps=document.createElement('style');
+ps.textContent=`@keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(22,163,74,0.4)}50%{box-shadow:0 0 12px rgba(22,163,74,0.8)}}`;
 document.head.appendChild(ps);
 
-// ── PASTE YOUR APPS SCRIPT WEB APP URL HERE ──
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz5I-6f8vgLgBhTbaVaFHAUmgOLaWULQMqP2suM485SRXDxaitv5y9GqyZGIkRbHKy6Xw/exec';
-
-// Track which sessions have already been synced
+// ══════════════════════════════════════
+// WIDGET SYNC TO SHEETS
+// ══════════════════════════════════════
 function getSyncedIds() {
-  try { return JSON.parse(localStorage.getItem('ws_synced_ids') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('ws_synced_ids')||'[]'); } catch { return []; }
 }
 function markSynced(ids) {
-  const existing = getSyncedIds();
-  localStorage.setItem('ws_synced_ids', JSON.stringify([...new Set([...existing, ...ids])]));
+  const ex=getSyncedIds();
+  localStorage.setItem('ws_synced_ids', JSON.stringify([...new Set([...ex,...ids])]));
 }
 
 async function syncToSheets() {
-  if (SHEETS_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
-    showToast('⚠️ Paste your Apps Script URL first');
-    return;
-  }
-
-  const btn = document.getElementById('syncBtn');
-  const syncedIds = getSyncedIds();
-
-  // Collect only unsynced sessions
-  const payload = [];
+  if (SHEETS_URL==='https://script.google.com/macros/s/AKfycbyjbFUxCeuMa8jjm8nWPkZX9inb2KIqvsbu0Zat993m__niaWnk-92A9gmd-zmiWqqLlw/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  const btn=document.getElementById('syncBtn');
+  const syncedIds=getSyncedIds(), payload=[];
   state.projects.forEach(proj => {
     proj.sessions.forEach(sess => {
-      const id = `${proj.id}-${sess.start}`;
-      if (!syncedIds.includes(id)) {
-        payload.push({
-          id,
-          project: proj.name,
-          task: '',
-          start: sess.start,
-          end: sess.end,
-          seconds: sess.seconds,
-          notes: ''
-        });
-      }
+      const id=`${proj.id}-${sess.start}`;
+      if (!syncedIds.includes(id)) payload.push({id,project:proj.name,task:'',start:sess.start,end:sess.end,seconds:sess.seconds,notes:''});
     });
   });
-
-  if (payload.length === 0) {
-    showToast('All sessions already synced ✓');
-    return;
-  }
-
-  btn.classList.add('syncing');
-  btn.textContent = '⟳ Syncing…';
-
+  if (!payload.length) { showToast('All sessions already synced ✓'); return; }
+  btn.classList.add('syncing'); btn.textContent='⟳ Syncing…';
   try {
-    const res = await fetch(SHEETS_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      headers: { 'Content-Type': 'text/plain' } // Apps Script requires text/plain for CORS
-    });
-    const json = await res.json();
-
+    const res=await fetch(SHEETS_URL,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
+    const json=await res.json();
     if (json.success) {
-      markSynced(payload.map(p => p.id));
-      btn.classList.remove('syncing');
-      btn.classList.add('synced');
-      btn.textContent = '✓ Synced!';
-      showToast(`${payload.length} session${payload.length > 1 ? 's' : ''} saved to Sheets`);
-      setTimeout(() => {
-        btn.classList.remove('synced');
-        btn.textContent = '↑ Sync to Sheets';
-      }, 3000);
-    } else {
-      throw new Error(json.error || 'Unknown error');
-    }
-  } catch (err) {
-    btn.classList.remove('syncing');
-    btn.classList.add('error');
-    btn.textContent = '✕ Failed';
-    showToast('Sync failed — check console');
-    console.error('Sheets sync error:', err);
-    setTimeout(() => {
-      btn.classList.remove('error');
-      btn.textContent = '↑ Sync to Sheets';
-    }, 3000);
+      markSynced(payload.map(p=>p.id));
+      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Synced!';
+      showToast(`${payload.length} session${payload.length>1?'s':''} saved to Sheets`);
+      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='↑ Sync to Sheets'; },3000);
+    } else throw new Error(json.error||'Unknown error');
+  } catch(err) {
+    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
+    showToast('Sync failed — check console'); console.error(err);
+    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='↑ Sync to Sheets'; },3000);
   }
 }
 
+// ══════════════════════════════════════
+// DASHBOARD EXPORT TO SHEETS
+// ══════════════════════════════════════
+async function dashSyncToSheets() {
+  if (DASH_SHEETS_URL==='https://script.google.com/macros/s/AKfycbyjbFUxCeuMa8jjm8nWPkZX9inb2KIqvsbu0Zat993m__niaWnk-92A9gmd-zmiWqqLlw/exec') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  const btn=document.getElementById('dashSyncBtn');
+  const sessions=getAllDashSessions();
+  if (!sessions.length) { showToast('No data in this period to export'); return; }
+  const syncedIds=getSyncedIds();
+  const payload=[];
+  state.projects.forEach(proj=>{
+    proj.sessions.filter(s=>sessionInDashFilter(s)).forEach(sess=>{
+      const id=`${proj.id}-${sess.start}`;
+      if (!syncedIds.includes(id)) payload.push({id,project:proj.name,task:'',start:sess.start,end:sess.end,seconds:sess.seconds,notes:''});
+    });
+  });
+  if (!payload.length) { showToast('All visible sessions already synced ✓'); return; }
+  btn.classList.add('syncing'); btn.textContent='⟳ Exporting…';
+  try {
+    const res=await fetch(DASH_SHEETS_URL,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
+    const json=await res.json();
+    if (json.success) {
+      markSynced(payload.map(p=>p.id));
+      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Exported!';
+      showToast(`${payload.length} rows exported to Google Sheets`);
+      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='📊 Export to Sheets'; },3000);
+    } else throw new Error(json.error||'Unknown error');
+  } catch(err) {
+    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
+    showToast('Export failed — check console'); console.error(err);
+    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='📊 Export to Sheets'; },3000);
+  }
+}
+
+// ══════════════════════════════════════
+// PRINT
+// ══════════════════════════════════════
+function printDashboard() { window.print(); }
+
+// ══════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
 }
 
+// ══════════════════════════════════════
+// FOOTER CLOCK
+// ══════════════════════════════════════
 function updateFooterDate() {
-  const now = new Date();
-  const date = now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-  const time = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
-  document.getElementById('footerDate').textContent = `${date}  •  ${time}`;
+  const now=new Date();
+  const date=now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  const time=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
+  document.getElementById('footerDate').textContent=`${date}  •  ${time}`;
 }
 
+// ══════════════════════════════════════
+// DRAG (widget)
+// ══════════════════════════════════════
 (function initDrag() {
-  const widget = document.getElementById('widget');
-  const bar = document.getElementById('dragBar');
-  let dragging=false, ox, oy;
-  widget.style.position = 'absolute';
-  bar.addEventListener('mousedown', e => { dragging=true; ox=e.clientX-widget.offsetLeft; oy=e.clientY-widget.offsetTop; });
-  document.addEventListener('mousemove', e => { if(!dragging)return; widget.style.left=(e.clientX-ox)+'px'; widget.style.top=(e.clientY-oy)+'px'; });
-  document.addEventListener('mouseup', () => dragging=false);
+  // Widget is in normal flow, so drag is disabled to keep layout clean
+  // Remove or uncomment below if you want drag back
 })();
 
-document.addEventListener('DOMContentLoaded', function() {
+// ══════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
   updateFooterDate();
   renderAll();
+  renderDashboard();
   if (state.activeProjectId && state.activeStart) { timerInterval=setInterval(tickTimer,1000); startPulse(); }
   setInterval(renderSummary, 5000);
+  setInterval(renderDashboard, 30000); // refresh dashboard every 30s
   setInterval(updateFooterDate, 1000);
-  // Send initial height to parent
   setTimeout(notifyHeight, 100);
 });
 </script>
