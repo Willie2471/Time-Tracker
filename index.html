@@ -68,6 +68,9 @@ html, body {
 .btn-pull.synced  { background: #f0fdf4; border-color: #16a34a; color: #15803d; }
 .btn-pull.error   { border-color: #fca5a5; color: #ef4444; }
 
+.sync-label { align-self: center; font-size: 11px; color: #6b7280; white-space: nowrap; }
+.sync-label.warn { color: #b45309; font-weight: 600; }
+
 /* Sync status bar */
 .sync-status-bar {
   display: none;
@@ -325,7 +328,8 @@ td .duration-pill {
         <!-- Actions -->
         <div class="dash-actions">
           <button class="dash-btn btn-print" onclick="printDashboard()">🖨 Print PDF</button>
-          <button class="dash-btn btn-pull" id="pullBtn" onclick="pullFromSheets()">⬇ Pull from Sheets</button>
+          <span class="sync-label" id="lastSyncedLabel">Auto-sync on</span>
+          <button class="dash-btn btn-pull" id="pullBtn" onclick="pullFromSheets()" title="Check Google Sheets for changes right now">⟳ Sync now</button>
         </div>
       </div>
     </div>
@@ -489,10 +493,6 @@ function renderDashboard() {
   // KPIs
   document.getElementById('kpiTotal').textContent = formatHM(totalSec);
   document.getElementById('kpiPeriodLabel').textContent = labels[dashFilter];
-  const ls=getLastSynced(); if(ls) {
-    const el=document.getElementById('lastSyncedLabel');
-    if(el) el.textContent='Last synced: '+ls;
-  }
   document.getElementById('kpiSessions').textContent = sessions.length;
   const avgSec = sessions.length ? Math.round(totalSec/sessions.length) : 0;
   document.getElementById('kpiAvg').textContent = sessions.length ? formatHM(avgSec) : '—';
@@ -728,80 +728,96 @@ function onTableClick(e) {
 
 
 // ══ PULL — Sheets → Dashboard ══
-async function pullFromSheets() {
-  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+let pulling = false, lastPullAt = 0;
+const AUTO_PULL_MS = 2 * 60 * 1000;   // how often the dashboard checks the sheet by itself
+
+// opts.silent = automatic run: no button animation or toasts, and nothing is saved/redrawn unless the sheet changed something
+async function pullFromSheets(opts) {
+  const silent = !!(opts && opts.silent);
+  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { if (!silent) showToast('⚠️ Paste your Apps Script URL first'); return; }
+  if (pulling) return;
+  pulling = true;
   const btn=document.getElementById('pullBtn');
-  btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
-  await flushSheetDeletes();   // clear out any waiting deletions first
-  setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
+  if (!silent) { btn.classList.add('syncing'); btn.textContent='⟳ Syncing…'; }
 
   try {
+    await flushSheetDeletes();   // clear out any waiting deletions first
+    if (!silent) setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
+
     const res = await fetch(DASH_SHEETS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ action: 'pull' })
     });
     const json = await res.json();
-
     if (!json.success) throw new Error(json.error||'Pull failed');
 
     const sheetSessions = json.sessions || [];
-    if (!sheetSessions.length) {
-      btn.classList.remove('syncing');
-      setSyncStatus('info','ℹ️ No sessions found in Google Sheets yet.');
-      showToast('No sessions in Sheets yet');
-      setTimeout(()=>{ btn.textContent='⬇ Pull from Sheets'; },2000);
-      return;
-    }
-
-    // Re-read saved data right now — the tracker may have changed it while we waited on the network
-    state = loadState();
-    // Merge sheet sessions into local state
     let added=0, updated=0;
 
-    sheetSessions.forEach(sess => {
-      const projName = sess.project;
-      if (isDeleted(projName, sess)) return;   // you deleted this one on purpose
-      // Find or create the project locally
-      let proj = state.projects.find(p => p.name === projName);
-      if (!proj) {
-        const icons=['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
-        proj = { id: uid(), name: projName, icon: icons[Math.floor(Math.random()*icons.length)], sessions: [] };
-        state.projects.push(proj);
-      }
-
-      // Check if session already exists by matching start timestamp
-      const existingIdx = proj.sessions.findIndex(s => s.start === sess.start);
-      const newSession = { start: sess.start, end: sess.end, seconds: sess.seconds, _sheetId: sess.id };
-
-      if (existingIdx >= 0) {
-        // Update if sheet version differs (user edited in sheet)
-        const existing = proj.sessions[existingIdx];
-        if (existing.seconds !== sess.seconds || existing.end !== sess.end) {
-          proj.sessions[existingIdx] = { ...existing, ...newSession };
-          updated++;
+    if (sheetSessions.length) {
+      // Re-read saved data right now — the tracker may have changed it while we waited on the network
+      state = loadState();
+      sheetSessions.forEach(sess => {
+        const projName = sess.project;
+        if (isDeleted(projName, sess)) return;   // you deleted this one on purpose
+        // Find or create the project locally
+        let proj = state.projects.find(p => p.name === projName);
+        if (!proj) {
+          const icons=['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
+          proj = { id: uid(), name: projName, icon: icons[Math.floor(Math.random()*icons.length)], sessions: [] };
+          state.projects.push(proj);
         }
-      } else {
-        proj.sessions.push(newSession);
-        added++;
-      }
-    });
+        // Already have it? Match by start time
+        const existingIdx = proj.sessions.findIndex(x => x.start === sess.start);
+        const newSession = { start: sess.start, end: sess.end, seconds: sess.seconds, _sheetId: sess.id };
+        if (existingIdx >= 0) {
+          const existing = proj.sessions[existingIdx];
+          if (existing.seconds !== sess.seconds || existing.end !== sess.end) {   // edited in the sheet
+            proj.sessions[existingIdx] = { ...existing, ...newSession };
+            updated++;
+          }
+        } else {
+          proj.sessions.push(newSession);
+          added++;
+        }
+      });
+      if (added || updated) { saveState(); renderDashboard(); }
+    }
 
-    saveState();
-renderDashboard();
+    lastPullAt = Date.now();
+    setLastSynced(); paintSyncLabel();
 
-    btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pulled!';
-    const msg=`✓ Pull complete — ${added} new, ${updated} updated from Google Sheets`;
-    showToast(msg); setSyncStatus('success', msg);
-    setLastSynced();
-    setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='⬇ Pull from Sheets'; },3000);
-
+    if (silent) {
+      if (added || updated) setSyncStatus('success', `✓ Synced from Google Sheets — ${added} new, ${updated} updated`);
+    } else {
+      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Synced!';
+      if (!sheetSessions.length) { setSyncStatus('info','ℹ️ No sessions found in Google Sheets yet.'); showToast('No sessions in Sheets yet'); }
+      else { const msg=`✓ Sync complete — ${added} new, ${updated} updated from Google Sheets`; showToast(msg); setSyncStatus('success', msg); }
+      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='⟳ Sync now'; },3000);
+    }
   } catch(err) {
-    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
-    setSyncStatus('error','✕ Pull failed — check console');
-    showToast('Pull failed'); console.error('Pull error:', err);
-    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='⬇ Pull from Sheets'; },3000);
+    console.error('Pull error:', err);
+    paintSyncLabel(true);
+    if (!silent) {
+      btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
+      setSyncStatus('error','✕ Sync failed — check your connection and try again');
+      showToast('Sync failed');
+      setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='⟳ Sync now'; },3000);
+    }
+  } finally {
+    pulling = false;
   }
+}
+
+// "Auto-sync on · last synced 5:42 PM"
+function paintSyncLabel(failed) {
+  const el = document.getElementById('lastSyncedLabel');
+  if (!el) return;
+  const ls = getLastSynced();
+  el.classList.toggle('warn', !!failed);
+  el.textContent = failed ? 'Auto-sync paused — can’t reach Sheets' + (ls ? ` · last synced ${ls}` : '')
+                          : 'Auto-sync on' + (ls ? ` · last synced ${ls}` : '');
 }
 
 
@@ -1009,7 +1025,14 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(renderDashboard, 30000);
   renderDashboard();
   setTimeout(notifyDashHeight, 200);
-  flushSheetDeletes();   // retry any deletions that are still waiting to reach the sheet
+  paintSyncLabel();
+
+  // ── Auto pull: on open, every couple of minutes, and whenever you return to this tab ──
+  pullFromSheets({ silent: true });
+  setInterval(() => { if (!document.hidden) pullFromSheets({ silent: true }); }, AUTO_PULL_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - lastPullAt > 60000) pullFromSheets({ silent: true });
+  });
 });
 
 </script>
