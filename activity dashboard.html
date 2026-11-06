@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WS Lawn Care — Activity Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════
+   BASE
+══════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: transparent;
+  color: #111827;
+  overflow-x: hidden;
+}
+
+/* PAGE LAYOUT */
+.page-wrap { display: flex; flex-direction: column; align-items: center; padding: 12px 12px 32px; }
+/* ══════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════ */
+#dashboard {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Dashboard Header ── */
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.dash-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-title span { font-size: 20px; }
+.dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.dash-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px; font-size: 12px;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+  font-family: 'IBM Plex Sans', sans-serif; border: 1px solid;
+}
+.btn-print {
+  background: #fff; border-color: #d1d5db; color: #374151;
+}
+.btn-print:hover { background: #f9fafb; border-color: #9ca3af; }
+.btn-sheets {
+  background: #15803d; border-color: #15803d; color: #fff;
+}
+.btn-sheets:hover { background: #166534; }
+.btn-sheets.syncing { background: #d97706; border-color: #d97706; cursor: wait; }
+.btn-sheets.synced  { background: #16a34a; border-color: #16a34a; }
+.btn-sheets.error   { background: #ef4444; border-color: #ef4444; }
+.btn-pull {
+  background: #fff; border-color: #86efac; color: #15803d;
+}
+.btn-pull:hover { background: #f0fdf4; }
+.btn-pull.syncing { border-color: #fbbf24; color: #d97706; cursor: wait; }
+.btn-pull.synced  { background: #f0fdf4; border-color: #16a34a; color: #15803d; }
+.btn-pull.error   { border-color: #fca5a5; color: #ef4444; }
+
+/* Sync status bar */
+.sync-status-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.sync-status-bar.show { display: flex; }
+.sync-status-bar.info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.sync-status-bar.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.sync-status-bar.error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+/* ── Dash Filter Tabs ── */
+.dash-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
+}
+.dash-tab {
+  padding: 6px 16px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase; color: #9ca3af;
+  cursor: pointer; transition: background 0.15s, color 0.15s; user-select: none;
+}
+.dash-tab.active { background: #15803d; color: #fff; }
+.dash-tab:hover:not(.active) { background: #f0fdf4; color: #15803d; }
+
+/* ── KPI Cards ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 700px) { .kpi-row { grid-template-columns: repeat(2,1fr); } }
+
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.15s;
+}
+.kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+.kpi-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #9ca3af;
+}
+.kpi-value {
+  font-family: 'IBM Plex Mono', monospace; font-size: 28px;
+  font-weight: 600; color: #111827; line-height: 1;
+}
+.kpi-sub { font-size: 12px; color: #6b7280; }
+.kpi-card.highlight { background: #f0fdf4; border-color: #bbf7d0; }
+.kpi-card.highlight .kpi-value { color: #15803d; }
+
+/* ── Charts Row ── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+.card-title {
+  font-size: 13px; font-weight: 600; color: #374151;
+  margin-bottom: 16px; display: flex; align-items: center; gap: 6px;
+}
+.card-title .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #16a34a;
+}
+.chart-wrap { position: relative; height: 200px; }
+
+/* ── Project Breakdown (donut legend) ── */
+.donut-wrap { position: relative; height: 160px; }
+.donut-legend { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.legend-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-label { font-size: 12px; color: #374151; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legend-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280; }
+
+/* ── Session Table ── */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+thead tr { border-bottom: 2px solid #e5e7eb; }
+th {
+  padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af;
+  white-space: nowrap;
+}
+tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+}
+tbody tr:hover { background: #f9fafb; }
+tbody tr:last-child { border-bottom: none; }
+td { padding: 10px 12px; color: #374151; vertical-align: middle; }
+td .project-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 5px; padding: 2px 7px; font-size: 11px; color: #15803d; font-weight: 500;
+}
+td .duration-pill {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  background: #f1f5f9; border-radius: 4px; padding: 2px 6px; color: #374151;
+}
+.no-data { text-align: center; padding: 32px; color: #9ca3af; font-size: 13px; }
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: #fff; border: 1px solid #86efac; color: #15803d;
+  font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+  padding: 8px 16px; border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  z-index: 99; transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════
+   PRINT STYLES
+══════════════════════════════════════ */
+@media print {
+  body { background: #fff; }
+  .sync-status-bar, .dash-actions, .dash-filter-wrap, #toast { display: none !important; }
+  .page-wrap { padding: 0; }
+  #dashboard { max-width: 100%; }
+  .card, .kpi-card { break-inside: avoid; box-shadow: none; border: 1px solid #d1d5db; }
+  .kpi-row { grid-template-columns: repeat(4,1fr); }
+  .charts-row { grid-template-columns: 2fr 1fr; }
+  .print-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #15803d;
+  }
+  .print-header h1 { font-size: 18px; color: #15803d; }
+  .print-header p { font-size: 12px; color: #6b7280; }
+}
+.print-header { display: none; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- ══ DASHBOARD ══ -->
+  <div id="dashboard">
+
+    <!-- Print-only header -->
+    <div class="print-header">
+      <div>
+        <h1>🌿 WS Lawn Care — Time Report</h1>
+        <p>Generated: <span id="printDate"></span></p>
+      </div>
+      <div style="text-align:right;font-size:12px;color:#6b7280;">
+        <div id="printPeriod"></div>
+        <div>wslauncareservicesllc.com</div>
+      </div>
+    </div>
+
+    <!-- Dash Header -->
+    <div class="dash-header">
+      <div>
+        <div class="dash-title"><span>📊</span> Activity Dashboard</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <!-- Dash Filter -->
+        <div class="dash-filter-wrap">
+          <div class="dash-tab active" onclick="setDashFilter('day',this)">Day</div>
+          <div class="dash-tab" onclick="setDashFilter('week',this)">Week</div>
+          <div class="dash-tab" onclick="setDashFilter('month',this)">Month</div>
+          <div class="dash-tab" onclick="setDashFilter('year',this)">Year</div>
+        </div>
+        <!-- Actions -->
+        <div class="dash-actions">
+          <button class="dash-btn btn-print" onclick="printDashboard()">🖨 Print PDF</button>
+          <button class="dash-btn btn-pull" id="pullBtn" onclick="pullFromSheets()">⬇ Pull from Sheets</button>
+          <button class="dash-btn btn-sheets" id="dashSyncBtn" onclick="dashSyncToSheets()">📊 Push to Sheets</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sync Status -->
+    <div class="sync-status-bar" id="syncStatusBar"></div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-row">
+      <div class="kpi-card highlight">
+        <div class="kpi-label">Total Hours</div>
+        <div class="kpi-value" id="kpiTotal">0h 0m</div>
+        <div class="kpi-sub" id="kpiPeriodLabel">Today</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Sessions</div>
+        <div class="kpi-value" id="kpiSessions">0</div>
+        <div class="kpi-sub">Time entries</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Session</div>
+        <div class="kpi-value" id="kpiAvg">—</div>
+        <div class="kpi-sub">Per entry</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Top Project</div>
+        <div class="kpi-value" id="kpiTopProject" style="font-size:15px;padding-top:4px;">—</div>
+        <div class="kpi-sub" id="kpiTopHours">No data yet</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+      <!-- Bar Chart -->
+      <div class="card">
+        <div class="card-title"><div class="dot"></div><span id="barChartTitle">Hours by Day</span></div>
+        <div class="chart-wrap">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+      <!-- Donut -->
+      <div class="card">
+        <div class="card-title"><div class="dot"></div>By Project</div>
+        <div class="donut-wrap">
+          <canvas id="donutChart"></canvas>
+        </div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+    <!-- Session Table -->
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>Session Log</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Project</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody id="sessionTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end dashboard -->
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══ STATE ══
+const STORAGE_KEY = 'ws_time_tracker_v2';
+const DASH_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwFYH8hEzQpWOPcdK7gmwbaARn0Xe8_lTnExg8B0Af_b0e60xZ4uu-dd11sfyT6y24VTA/exec';
+
+let state = loadState();
+let dashFilter     = 'day';   // dashboard filter
+let barChartInst   = null;
+let donutChartInst = null;
+
+function defaultState() {
+  return { projects: [], activeProjectId: null, activeStart: null };
+}
+function loadState() {
+  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : defaultState(); }
+  catch { return defaultState(); }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+
+// ══ FORMAT HELPERS ══
+function formatMM(sec) {
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+function formatHM(sec) { return `${Math.floor(sec/3600)}h ${pad(Math.floor((sec%3600)/60))}m`; }
+function formatHMdec(sec) { return (sec/3600).toFixed(2) + 'h'; }
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function fmtDate(ts) {
+  return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+}
+
+
+// ══ FILTER HELPERS ══
+function sessionInFilter(sess, filter) {
+  const d = new Date(sess.start), now = new Date();
+  if (filter === 'day')   return d.toDateString() === now.toDateString();
+  if (filter === 'week')  { const w = new Date(); w.setDate(now.getDate()-7); return d >= w; }
+  if (filter === 'month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  if (filter === 'year')  return d.getFullYear()===now.getFullYear();
+  return false;
+}
+
+function sessionInDashFilter(sess)   { return sessionInFilter(sess, dashFilter); }
+
+
+
+// ══ DASHBOARD RENDER ══
+const CHART_COLORS = ['#16a34a','#2563eb','#d97706','#9333ea','#ef4444','#0891b2','#ca8a04','#be185d'];
+
+function setDashFilter(f, tab) {
+  dashFilter = f;
+  document.querySelectorAll('.dash-tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  renderDashboard();
+}
+
+function getAllDashSessions() {
+  const all = [];
+  state.projects.forEach(proj => {
+    proj.sessions.filter(s=>sessionInDashFilter(s)).forEach(sess => {
+      all.push({ ...sess, projectName: proj.name, projectIcon: proj.icon });
+    });
+  });
+  return all;
+}
+
+function renderDashboard() {
+  const sessions = getAllDashSessions();
+  const totalSec = sessions.reduce((a,s)=>a+s.seconds, 0);
+  const labels = {day:'Today',week:'This Week',month:'This Month',year:'This Year'};
+
+  // KPIs
+  document.getElementById('kpiTotal').textContent = formatHM(totalSec);
+  document.getElementById('kpiPeriodLabel').textContent = labels[dashFilter];
+  const ls=getLastSynced(); if(ls) {
+    const el=document.getElementById('lastSyncedLabel');
+    if(el) el.textContent='Last synced: '+ls;
+  }
+  document.getElementById('kpiSessions').textContent = sessions.length;
+  const avgSec = sessions.length ? Math.round(totalSec/sessions.length) : 0;
+  document.getElementById('kpiAvg').textContent = sessions.length ? formatHM(avgSec) : '—';
+  document.getElementById('printDate').textContent = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('printPeriod').textContent = `Period: ${labels[dashFilter]}`;
+
+  // Top project
+  let topProj = null, topSec = 0;
+  state.projects.forEach(proj => {
+    const secs = proj.sessions.filter(s=>sessionInDashFilter(s)).reduce((a,s)=>a+s.seconds,0);
+    if (secs > topSec) { topSec = secs; topProj = proj; }
+  });
+  document.getElementById('kpiTopProject').textContent = topProj ? `${topProj.icon} ${topProj.name}` : '—';
+  document.getElementById('kpiTopHours').textContent = topProj ? formatHM(topSec) : 'No data yet';
+
+  if (typeof Chart !== 'undefined') { renderBarChart(sessions); renderDonut(); }
+  else document.querySelectorAll('.chart-wrap, .donut-wrap, .donut-legend').forEach(el => { el.innerHTML = '<div class="no-data">Charts could not load. Check your internet connection and refresh.</div>'; });
+  renderTable(sessions);
+}
+
+function renderBarChart(sessions) {
+  const canvas = document.getElementById('barChart');
+  const ctx = canvas.getContext('2d');
+  if (barChartInst) { barChartInst.destroy(); barChartInst = null; }
+
+  let labels=[], data=[];
+
+  if (dashFilter === 'day') {
+    // Hours by hour of day
+    document.getElementById('barChartTitle').textContent = 'Hours by Hour (Today)';
+    const byHour = {};
+    sessions.forEach(s => {
+      const h = new Date(s.start).getHours();
+      byHour[h] = (byHour[h]||0) + s.seconds;
+    });
+    const hours = [...new Set(Object.keys(byHour).map(Number))].sort((a,b)=>a-b);
+    if (!hours.length) {
+      // show 6am-6pm skeleton
+      for (let h=6;h<=18;h++) { labels.push(h%12||12)+(h<12?'am':'pm'); data.push(0); }
+    } else {
+      const mn=Math.min(...hours), mx=Math.max(...hours);
+      for (let h=mn;h<=mx;h++) {
+        labels.push((h%12||12)+(h<12?'am':'pm'));
+        data.push(+(( byHour[h]||0)/3600).toFixed(2));
+      }
+    }
+  } else if (dashFilter === 'week') {
+    document.getElementById('barChartTitle').textContent = 'Hours by Day (Last 7 Days)';
+    const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const byDay={};
+    sessions.forEach(s=>{ const d=new Date(s.start).getDay(); byDay[d]=(byDay[d]||0)+s.seconds; });
+    for(let i=0;i<7;i++){ labels.push(days[i]); data.push(+((byDay[i]||0)/3600).toFixed(2)); }
+  } else if (dashFilter === 'month') {
+    document.getElementById('barChartTitle').textContent = 'Hours by Week (This Month)';
+    const byWeek={};
+    sessions.forEach(s=>{
+      const d=new Date(s.start), wk=Math.ceil(d.getDate()/7);
+      byWeek[wk]=(byWeek[wk]||0)+s.seconds;
+    });
+    for(let w=1;w<=5;w++){ labels.push(`Wk ${w}`); data.push(+((byWeek[w]||0)/3600).toFixed(2)); }
+  } else {
+    document.getElementById('barChartTitle').textContent = 'Hours by Month (This Year)';
+    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const byMonth={};
+    sessions.forEach(s=>{ const m=new Date(s.start).getMonth(); byMonth[m]=(byMonth[m]||0)+s.seconds; });
+    months.forEach((m,i)=>{ labels.push(m); data.push(+((byMonth[i]||0)/3600).toFixed(2)); });
+  }
+
+  barChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Hours',
+        data,
+        backgroundColor: 'rgba(22,163,74,0.75)',
+        borderColor: '#15803d',
+        borderWidth: 1,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}h` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9ca3af' } },
+        y: {
+          beginAtZero: true,
+          ticks: { font: { size: 10 }, color: '#9ca3af', callback: v => v+'h' },
+          grid: { color: '#f3f4f6' }
+        }
+      }
+    }
+  });
+}
+
+function renderDonut() {
+  const canvas = document.getElementById('donutChart');
+  const ctx = canvas.getContext('2d');
+  if (donutChartInst) { donutChartInst.destroy(); donutChartInst=null; }
+
+  const projData = state.projects.map((proj,i) => ({
+    name: proj.name, icon: proj.icon,
+    secs: proj.sessions.filter(s=>sessionInDashFilter(s)).reduce((a,s)=>a+s.seconds,0),
+    color: CHART_COLORS[i % CHART_COLORS.length]
+  })).filter(p=>p.secs>0).sort((a,b)=>b.secs-a.secs);
+
+  const legend = document.getElementById('donutLegend');
+  legend.innerHTML = '';
+
+  if (!projData.length) {
+    canvas.style.display='none';
+    legend.innerHTML='<div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px 0;">No data yet</div>';
+    return;
+  }
+  canvas.style.display='';
+
+  donutChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: projData.map(p=>p.name),
+      datasets: [{ data: projData.map(p=>+(p.secs/3600).toFixed(2)), backgroundColor: projData.map(p=>p.color), borderWidth: 2, borderColor:'#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}h` } } }
+    }
+  });
+
+  const total = projData.reduce((a,p)=>a+p.secs,0);
+  projData.forEach(p => {
+    const pct = total ? Math.round(p.secs/total*100) : 0;
+    const row = document.createElement('div');
+    row.className='legend-row';
+    row.innerHTML=`<div class="legend-dot" style="background:${p.color}"></div><span class="legend-label">${p.icon} ${p.name}</span><span class="legend-val">${formatHMdec(p.secs)} (${pct}%)</span>`;
+    legend.appendChild(row);
+  });
+}
+
+function renderTable(sessions) {
+  const tbody = document.getElementById('sessionTableBody');
+  tbody.innerHTML='';
+
+  const sorted = [...sessions].sort((a,b)=>b.start-a.start);
+
+  if (!sorted.length) {
+    tbody.innerHTML=`<tr><td colspan="5" class="no-data">🌿 No sessions in this period</td></tr>`;
+    return;
+  }
+
+  sorted.forEach(sess => {
+    const tr = document.createElement('tr');
+    tr.innerHTML=`
+      <td>${fmtDate(sess.start)}</td>
+      <td><span class="project-badge">${sess.projectIcon} ${sess.projectName}</span></td>
+      <td>${fmtTime(sess.start)}</td>
+      <td>${fmtTime(sess.end)}</td>
+      <td><span class="duration-pill">${formatHM(sess.seconds)}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+
+// ══ SYNC HELPERS ══
+function getSyncedIds() {
+  try { return JSON.parse(localStorage.getItem('ws_synced_ids')||'[]'); } catch { return []; }
+}
+function markSynced(ids) {
+  const ex=getSyncedIds();
+  localStorage.setItem('ws_synced_ids', JSON.stringify([...new Set([...ex,...ids])]));
+}
+
+
+// ══ PUSH — Dashboard → Sheets ══
+async function dashSyncToSheets() {
+  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  const btn=document.getElementById('dashSyncBtn');
+
+  // Build full payload of ALL sessions (not just filtered) so sheet stays complete
+  const syncedIds=getSyncedIds(), payload=[];
+  state.projects.forEach(proj=>{
+    proj.sessions.forEach(sess=>{
+      const id=sess._sheetId||`${proj.id}-${sess.start}`;
+      // Always include — server will update if exists, add if new
+      payload.push({id, project:proj.name, task:'', start:sess.start, end:sess.end, seconds:sess.seconds, notes:''});
+    });
+  });
+  if (!payload.length) { showToast('No sessions to push yet'); return; }
+
+  btn.classList.add('syncing'); btn.textContent='⟳ Pushing…';
+  setSyncStatus('info', `⟳ Pushing ${payload.length} sessions to Google Sheets…`);
+  try {
+    const res=await fetch(DASH_SHEETS_URL,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
+    const json=await res.json();
+    if (json.success) {
+      markSynced(payload.map(p=>p.id));
+      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pushed!';
+      const msg=`✓ Pushed ${json.added} new + ${json.updated} updated rows to Google Sheets`;
+      showToast(msg); setSyncStatus('success', msg);
+      setLastSynced();
+      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='📊 Push to Sheets'; },3000);
+    } else throw new Error(json.error||'Unknown error');
+  } catch(err) {
+    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
+    const msg='✕ Push failed — see console for details';
+    showToast('Push failed'); setSyncStatus('error', msg); console.error(err);
+    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='📊 Push to Sheets'; },3000);
+  }
+}
+
+
+// ══ PULL — Sheets → Dashboard ══
+async function pullFromSheets() {
+  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
+  const btn=document.getElementById('pullBtn');
+  btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
+  setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
+
+  try {
+    const res = await fetch(DASH_SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'pull' })
+    });
+    const json = await res.json();
+
+    if (!json.success) throw new Error(json.error||'Pull failed');
+
+    const sheetSessions = json.sessions || [];
+    if (!sheetSessions.length) {
+      btn.classList.remove('syncing');
+      setSyncStatus('info','ℹ️ No sessions found in Google Sheets yet.');
+      showToast('No sessions in Sheets yet');
+      setTimeout(()=>{ btn.textContent='⬇ Pull from Sheets'; },2000);
+      return;
+    }
+
+    // Re-read saved data right now — the tracker may have changed it while we waited on the network
+    state = loadState();
+    // Merge sheet sessions into local state
+    let added=0, updated=0;
+
+    sheetSessions.forEach(sess => {
+      const projName = sess.project;
+      // Find or create the project locally
+      let proj = state.projects.find(p => p.name === projName);
+      if (!proj) {
+        const icons=['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
+        proj = { id: uid(), name: projName, icon: icons[Math.floor(Math.random()*icons.length)], sessions: [] };
+        state.projects.push(proj);
+      }
+
+      // Check if session already exists by matching start timestamp
+      const existingIdx = proj.sessions.findIndex(s => s.start === sess.start);
+      const newSession = { start: sess.start, end: sess.end, seconds: sess.seconds, _sheetId: sess.id };
+
+      if (existingIdx >= 0) {
+        // Update if sheet version differs (user edited in sheet)
+        const existing = proj.sessions[existingIdx];
+        if (existing.seconds !== sess.seconds || existing.end !== sess.end) {
+          proj.sessions[existingIdx] = { ...existing, ...newSession };
+          updated++;
+        }
+      } else {
+        proj.sessions.push(newSession);
+        added++;
+      }
+    });
+
+    saveState();
+renderDashboard();
+
+    btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pulled!';
+    const msg=`✓ Pull complete — ${added} new, ${updated} updated from Google Sheets`;
+    showToast(msg); setSyncStatus('success', msg);
+    setLastSynced();
+    setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='⬇ Pull from Sheets'; },3000);
+
+  } catch(err) {
+    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
+    setSyncStatus('error','✕ Pull failed — check console');
+    showToast('Pull failed'); console.error('Pull error:', err);
+    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='⬇ Pull from Sheets'; },3000);
+  }
+}
+
+
+// ══ SYNC STATUS ══
+function setSyncStatus(type, msg) {
+  const bar = document.getElementById('syncStatusBar');
+  bar.className = 'sync-status-bar show ' + type;
+  bar.textContent = msg;
+  if (type === 'success') setTimeout(()=>{ bar.classList.remove('show'); }, 6000);
+}
+
+function setLastSynced() {
+  const now = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
+  localStorage.setItem('ws_last_synced', now);
+}
+
+function getLastSynced() {
+  return localStorage.getItem('ws_last_synced') || null;
+}
+
+
+// ══ PRINT ══
+function printDashboard() { window.print(); }
+
+
+// ══ TOAST ══
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+
+// ══ BOOT ══
+
+function notifyDashHeight() {
+  const h = document.getElementById('dashboard').getBoundingClientRect().height;
+  window.parent.postMessage({ type: 'ws-dashboard-resize', height: Math.ceil(h) + 48 }, '*');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // The tracker page (or another tab) saves new sessions — refresh live
+  window.addEventListener('storage', e => {
+    if (e.key !== STORAGE_KEY) return;
+    state = loadState();
+    renderDashboard();
+  });
+
+  // Tell the parent page how tall the dashboard is so the iframe fits it
+  if (window.ResizeObserver) new ResizeObserver(notifyDashHeight).observe(document.getElementById('dashboard'));
+
+  setInterval(renderDashboard, 30000);
+  renderDashboard();
+  setTimeout(notifyDashHeight, 200);
+});
+
+</script>
+</body>
+</html>
