@@ -60,13 +60,6 @@ html, body {
   background: #fff; border-color: #d1d5db; color: #374151;
 }
 .btn-print:hover { background: #f9fafb; border-color: #9ca3af; }
-.btn-sheets {
-  background: #15803d; border-color: #15803d; color: #fff;
-}
-.btn-sheets:hover { background: #166534; }
-.btn-sheets.syncing { background: #d97706; border-color: #d97706; cursor: wait; }
-.btn-sheets.synced  { background: #16a34a; border-color: #16a34a; }
-.btn-sheets.error   { background: #ef4444; border-color: #ef4444; }
 .btn-pull {
   background: #fff; border-color: #86efac; color: #15803d;
 }
@@ -174,6 +167,23 @@ html, body {
 .legend-label { font-size: 12px; color: #374151; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .legend-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280; }
 
+/* ── Delete entry ── */
+.col-act { width: 1%; white-space: nowrap; }
+.del-btn {
+  width: 26px; height: 26px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff;
+  cursor: pointer; font-size: 12px; line-height: 1; opacity: 0.55; transition: all 0.12s;
+}
+tbody tr:hover .del-btn { opacity: 1; }
+.del-btn:hover { background: #fee2e2; border-color: #fca5a5; opacity: 1; }
+.del-confirm { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #b91c1c; white-space: nowrap; }
+.del-confirm button {
+  padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
+  font-family: inherit; border: 1px solid #d1d5db; background: #fff; color: #374151;
+}
+.del-confirm .del-yes { background: #dc2626; border-color: #dc2626; color: #fff; }
+.del-confirm .del-yes:hover { background: #b91c1c; }
+.del-confirm .del-no:hover { background: #f9fafb; }
+
 /* ── Session Table ── */
 .table-wrap { overflow-x: auto; }
 table {
@@ -221,26 +231,75 @@ td .duration-pill {
 /* ══════════════════════════════════════
    PRINT STYLES
 ══════════════════════════════════════ */
+@page { size: letter portrait; margin: 0.5in; }
+#printReport { display: none; }
+
 @media print {
-  body { background: #fff; }
-  .sync-status-bar, .dash-actions, .dash-filter-wrap, #toast { display: none !important; }
-  .page-wrap { padding: 0; }
-  #dashboard { max-width: 100%; }
-  .card, .kpi-card { break-inside: avoid; box-shadow: none; border: 1px solid #d1d5db; }
-  .kpi-row { grid-template-columns: repeat(4,1fr); }
-  .charts-row { grid-template-columns: 2fr 1fr; }
-  .print-header {
-    display: flex !important;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #15803d;
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { background: #fff !important; overflow: visible; }
+  .page-wrap { display: block; padding: 0; }
+  #dashboard, #toast { display: none !important; }
+  #printReport { display: block; color: #111827; font-size: 11px; line-height: 1.45; }
+
+  .pr-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 3px solid #15803d; }
+  .pr-brand h1 { font-size: 21px; color: #15803d; font-weight: 700; }
+  .pr-brand p { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  .pr-period { text-align: right; }
+  .pr-period b { display: block; font-size: 14px; color: #111827; }
+  .pr-period span { font-size: 10px; color: #6b7280; }
+
+  .pr-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .pr-kpi { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; }
+  .pr-kpi.hl { background: #f0fdf4; border-color: #86efac; }
+  .pr-kpi .l { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; }
+  .pr-kpi .v { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 700; color: #111827; margin: 2px 0; }
+  .pr-kpi.hl .v { color: #15803d; }
+  .pr-kpi .s { font-size: 9.5px; color: #6b7280; }
+
+  .pr-sec { margin-bottom: 16px; break-inside: avoid; }
+  .pr-sec h2 {
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #15803d;
+    padding-bottom: 3px; margin-bottom: 8px; border-bottom: 1px solid #bbf7d0;
   }
-  .print-header h1 { font-size: 18px; color: #15803d; }
-  .print-header p { font-size: 12px; color: #6b7280; }
+  .pr-sec.log { break-inside: auto; }
+
+  .pr-take { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #15803d; border-radius: 6px; padding: 10px 14px; }
+  .pr-take ul { list-style: none; }
+  .pr-take li { display: flex; gap: 9px; padding: 3.5px 0; font-size: 11.5px; }
+  .pr-take li + li { border-top: 1px dashed #bbf7d0; }
+  .pr-take .ic { width: 16px; text-align: center; flex-shrink: 0; }
+
+  .pr-summary { font-size: 12px; margin-bottom: 9px; }
+  .pr-summary b { color: #15803d; }
+  table.pr-proj, table.pr-table { width: 100%; border-collapse: collapse; }
+  table.pr-proj th, table.pr-table th {
+    text-align: left; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #6b7280; padding: 4px 8px; border-bottom: 1.5px solid #9ca3af; white-space: nowrap;
+  }
+  table.pr-proj td, table.pr-table td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-size: 11px; vertical-align: middle; }
+  table.pr-proj .num, table.pr-table .num { text-align: right; font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+  table.pr-proj th.num, table.pr-table th.num { text-align: right; }
+  .pr-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .pr-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; min-width: 90px; }
+  .pr-bar i { display: block; height: 100%; border-radius: 4px; }
+  .pr-rank { color: #9ca3af; font-weight: 700; width: 18px; }
+
+  .pr-chart { display: flex; align-items: flex-end; gap: 5px; height: 104px; border-bottom: 1px solid #9ca3af; }
+  .pr-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+  .pr-col .val { font-size: 8.5px; color: #374151; height: 11px; line-height: 11px; }
+  .pr-col .bar { width: 100%; max-width: 38px; background: #86efac; border-radius: 3px 3px 0 0; }
+  .pr-col.max .bar { background: #15803d; }
+  .pr-labels { display: flex; gap: 5px; margin-top: 3px; }
+  .pr-labels span { flex: 1; text-align: center; font-size: 8.5px; color: #6b7280; min-width: 0; }
+
+  table.pr-table thead { display: table-header-group; }
+  table.pr-table tr { break-inside: avoid; }
+  table.pr-table tr.day-row td { background: #f3f4f6; font-weight: 700; padding: 5px 8px; border-top: 1px solid #d1d5db; color: #111827; }
+  table.pr-table tr.day-row .num { color: #15803d; }
+
+  .pr-empty { padding: 40px 0; text-align: center; color: #6b7280; font-size: 13px; }
+  .pr-foot { margin-top: 14px; padding-top: 8px; border-top: 1px solid #d1d5db; display: flex; justify-content: space-between; font-size: 9.5px; color: #6b7280; }
 }
-.print-header { display: none; }
 </style>
 </head>
 <body>
@@ -249,18 +308,6 @@ td .duration-pill {
 
   <!-- ══ DASHBOARD ══ -->
   <div id="dashboard">
-
-    <!-- Print-only header -->
-    <div class="print-header">
-      <div>
-        <h1>🌿 WS Lawn Care — Time Report</h1>
-        <p>Generated: <span id="printDate"></span></p>
-      </div>
-      <div style="text-align:right;font-size:12px;color:#6b7280;">
-        <div id="printPeriod"></div>
-        <div>wslauncareservicesllc.com</div>
-      </div>
-    </div>
 
     <!-- Dash Header -->
     <div class="dash-header">
@@ -279,7 +326,6 @@ td .duration-pill {
         <div class="dash-actions">
           <button class="dash-btn btn-print" onclick="printDashboard()">🖨 Print PDF</button>
           <button class="dash-btn btn-pull" id="pullBtn" onclick="pullFromSheets()">⬇ Pull from Sheets</button>
-          <button class="dash-btn btn-sheets" id="dashSyncBtn" onclick="dashSyncToSheets()">📊 Push to Sheets</button>
         </div>
       </div>
     </div>
@@ -342,6 +388,7 @@ td .duration-pill {
               <th>Start</th>
               <th>End</th>
               <th>Duration</th>
+              <th class="col-act"></th>
             </tr>
           </thead>
           <tbody id="sessionTableBody"></tbody>
@@ -350,6 +397,9 @@ td .duration-pill {
     </div>
 
   </div><!-- end dashboard -->
+
+  <!-- Printed / PDF report (built by buildPrintReport(); hidden on screen) -->
+  <div id="printReport"></div>
 
 </div>
 
@@ -421,10 +471,14 @@ function getAllDashSessions() {
   const all = [];
   state.projects.forEach(proj => {
     proj.sessions.filter(s=>sessionInDashFilter(s)).forEach(sess => {
-      all.push({ ...sess, projectName: proj.name, projectIcon: proj.icon });
+      all.push({ ...sess, projectId: proj.id, projectName: proj.name, projectIcon: proj.icon });
     });
   });
   return all;
+}
+
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function renderDashboard() {
@@ -442,8 +496,6 @@ function renderDashboard() {
   document.getElementById('kpiSessions').textContent = sessions.length;
   const avgSec = sessions.length ? Math.round(totalSec/sessions.length) : 0;
   document.getElementById('kpiAvg').textContent = sessions.length ? formatHM(avgSec) : '—';
-  document.getElementById('printDate').textContent = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-  document.getElementById('printPeriod').textContent = `Period: ${labels[dashFilter]}`;
 
   // Top project
   let topProj = null, topSec = 0;
@@ -459,53 +511,43 @@ function renderDashboard() {
   renderTable(sessions);
 }
 
+// Hours grouped for the current filter: used by the on-screen chart and the printed report
+function getBuckets(sessions) {
+  let title, labels = [], data = [];
+  const hrs = sec => +((sec || 0) / 3600).toFixed(2);
+
+  if (dashFilter === 'day') {
+    title = 'Hours by Hour (Today)';
+    const byHour = {};
+    sessions.forEach(s => { const h = new Date(s.start).getHours(); byHour[h] = (byHour[h] || 0) + s.seconds; });
+    const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+    const mn = hours.length ? Math.min(...hours) : 6, mx = hours.length ? Math.max(...hours) : 18;
+    for (let h = mn; h <= mx; h++) { labels.push((h % 12 || 12) + (h < 12 ? 'am' : 'pm')); data.push(hrs(byHour[h])); }
+  } else if (dashFilter === 'week') {
+    title = 'Hours by Day (Last 7 Days)';
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], byDay = {};
+    sessions.forEach(s => { const d = new Date(s.start).getDay(); byDay[d] = (byDay[d] || 0) + s.seconds; });
+    for (let i = 0; i < 7; i++) { labels.push(days[i]); data.push(hrs(byDay[i])); }
+  } else if (dashFilter === 'month') {
+    title = 'Hours by Week (This Month)';
+    const byWeek = {};
+    sessions.forEach(s => { const wk = Math.ceil(new Date(s.start).getDate() / 7); byWeek[wk] = (byWeek[wk] || 0) + s.seconds; });
+    for (let w = 1; w <= 5; w++) { labels.push(`Wk ${w}`); data.push(hrs(byWeek[w])); }
+  } else {
+    title = 'Hours by Month (This Year)';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], byMonth = {};
+    sessions.forEach(s => { const m = new Date(s.start).getMonth(); byMonth[m] = (byMonth[m] || 0) + s.seconds; });
+    months.forEach((m, i) => { labels.push(m); data.push(hrs(byMonth[i])); });
+  }
+  return { title, labels, data };
+}
+
 function renderBarChart(sessions) {
   const canvas = document.getElementById('barChart');
   const ctx = canvas.getContext('2d');
   if (barChartInst) { barChartInst.destroy(); barChartInst = null; }
-
-  let labels=[], data=[];
-
-  if (dashFilter === 'day') {
-    // Hours by hour of day
-    document.getElementById('barChartTitle').textContent = 'Hours by Hour (Today)';
-    const byHour = {};
-    sessions.forEach(s => {
-      const h = new Date(s.start).getHours();
-      byHour[h] = (byHour[h]||0) + s.seconds;
-    });
-    const hours = [...new Set(Object.keys(byHour).map(Number))].sort((a,b)=>a-b);
-    if (!hours.length) {
-      // show 6am-6pm skeleton
-      for (let h=6;h<=18;h++) { labels.push(h%12||12)+(h<12?'am':'pm'); data.push(0); }
-    } else {
-      const mn=Math.min(...hours), mx=Math.max(...hours);
-      for (let h=mn;h<=mx;h++) {
-        labels.push((h%12||12)+(h<12?'am':'pm'));
-        data.push(+(( byHour[h]||0)/3600).toFixed(2));
-      }
-    }
-  } else if (dashFilter === 'week') {
-    document.getElementById('barChartTitle').textContent = 'Hours by Day (Last 7 Days)';
-    const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const byDay={};
-    sessions.forEach(s=>{ const d=new Date(s.start).getDay(); byDay[d]=(byDay[d]||0)+s.seconds; });
-    for(let i=0;i<7;i++){ labels.push(days[i]); data.push(+((byDay[i]||0)/3600).toFixed(2)); }
-  } else if (dashFilter === 'month') {
-    document.getElementById('barChartTitle').textContent = 'Hours by Week (This Month)';
-    const byWeek={};
-    sessions.forEach(s=>{
-      const d=new Date(s.start), wk=Math.ceil(d.getDate()/7);
-      byWeek[wk]=(byWeek[wk]||0)+s.seconds;
-    });
-    for(let w=1;w<=5;w++){ labels.push(`Wk ${w}`); data.push(+((byWeek[w]||0)/3600).toFixed(2)); }
-  } else {
-    document.getElementById('barChartTitle').textContent = 'Hours by Month (This Year)';
-    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const byMonth={};
-    sessions.forEach(s=>{ const m=new Date(s.start).getMonth(); byMonth[m]=(byMonth[m]||0)+s.seconds; });
-    months.forEach((m,i)=>{ labels.push(m); data.push(+((byMonth[i]||0)/3600).toFixed(2)); });
-  }
+  const { title, labels, data } = getBuckets(sessions);
+  document.getElementById('barChartTitle').textContent = title;
 
   barChartInst = new Chart(ctx, {
     type: 'bar',
@@ -585,7 +627,7 @@ function renderTable(sessions) {
   const sorted = [...sessions].sort((a,b)=>b.start-a.start);
 
   if (!sorted.length) {
-    tbody.innerHTML=`<tr><td colspan="5" class="no-data">🌿 No sessions in this period</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="6" class="no-data">🌿 No sessions in this period</td></tr>`;
     return;
   }
 
@@ -593,59 +635,94 @@ function renderTable(sessions) {
     const tr = document.createElement('tr');
     tr.innerHTML=`
       <td>${fmtDate(sess.start)}</td>
-      <td><span class="project-badge">${sess.projectIcon} ${sess.projectName}</span></td>
+      <td><span class="project-badge">${sess.projectIcon} ${esc(sess.projectName)}</span></td>
       <td>${fmtTime(sess.start)}</td>
       <td>${fmtTime(sess.end)}</td>
-      <td><span class="duration-pill">${formatHM(sess.seconds)}</span></td>`;
+      <td><span class="duration-pill">${formatHM(sess.seconds)}</span></td>
+      <td class="col-act"><button class="del-btn" data-pid="${esc(sess.projectId)}" data-start="${sess.start}" title="Delete this time entry" aria-label="Delete this time entry">🗑</button></td>`;
     tbody.appendChild(tr);
   });
 }
 
 
-// ══ SYNC HELPERS ══
-function getSyncedIds() {
-  try { return JSON.parse(localStorage.getItem('ws_synced_ids')||'[]'); } catch { return []; }
+// ══ DELETE AN ENTRY ══
+// Deleted entries are remembered so "Pull from Sheets" does not bring them back.
+const DELETED_KEY = 'ws_deleted_sessions';
+function getDeleted() { try { return JSON.parse(localStorage.getItem(DELETED_KEY) || '[]'); } catch { return []; } }
+function addDeleted(keys) { localStorage.setItem(DELETED_KEY, JSON.stringify([...new Set([...getDeleted(), ...keys])])); }
+function isDeleted(projName, sess) {
+  const d = getDeleted();
+  return d.includes(`${projName}|${sess.start}`) || (sess.id && d.includes('id:' + sess.id));
 }
-function markSynced(ids) {
-  const ex=getSyncedIds();
-  localStorage.setItem('ws_synced_ids', JSON.stringify([...new Set([...ex,...ids])]));
+
+function deleteSession(projId, start) {
+  state = loadState();   // work on the freshest saved data
+  const proj = state.projects.find(p => p.id === projId);
+  const idx = proj ? proj.sessions.findIndex(x => x.start === start) : -1;
+  if (idx < 0) { renderDashboard(); showToast('That entry was already removed'); return; }
+  const [gone] = proj.sessions.splice(idx, 1);
+  addDeleted([`${proj.name}|${gone.start}`].concat(gone._sheetId ? ['id:' + gone._sheetId] : []));
+  saveState();
+  renderDashboard();
+  showToast(`Deleted ${formatHM(gone.seconds)} entry from ${proj.name}`);
+  queueSheetDelete(proj, gone);   // and remove its row from the Google Sheet
 }
 
+// ── Remove the matching row from the Google Sheet too ──
+// Needs the version-2 Apps Script. Until then (or when offline) the deletion waits in a small
+// queue and goes through the next time the dashboard can reach the sheet.
+const PENDING_DEL_KEY = 'ws_pending_sheet_deletes';
+let sheetDeleteSupported = false, flushingDeletes = false;
+function getPendingDeletes() { try { return JSON.parse(localStorage.getItem(PENDING_DEL_KEY) || '[]'); } catch { return []; } }
+function setPendingDeletes(list) { localStorage.setItem(PENDING_DEL_KEY, JSON.stringify(list)); }
 
-// ══ PUSH — Dashboard → Sheets ══
-async function dashSyncToSheets() {
-  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
-  const btn=document.getElementById('dashSyncBtn');
+function queueSheetDelete(proj, sess) {
+  const ids = [`${proj.id}-${sess.start}`]; if (sess._sheetId) ids.push(sess._sheetId);
+  const list = getPendingDeletes();
+  list.push({ key: `${proj.name}|${sess.start}`, project: proj.name, start: sess.start, ids });
+  setPendingDeletes(list);
+  flushSheetDeletes();
+}
 
-  // Build full payload of ALL sessions (not just filtered) so sheet stays complete
-  const syncedIds=getSyncedIds(), payload=[];
-  state.projects.forEach(proj=>{
-    proj.sessions.forEach(sess=>{
-      const id=sess._sheetId||`${proj.id}-${sess.start}`;
-      // Always include — server will update if exists, add if new
-      payload.push({id, project:proj.name, task:'', start:sess.start, end:sess.end, seconds:sess.seconds, notes:''});
-    });
-  });
-  if (!payload.length) { showToast('No sessions to push yet'); return; }
+async function sheetSupportsDelete() {
+  if (sheetDeleteSupported) return true;
+  const res = await fetch(DASH_SHEETS_URL);          // health check; newer script reports version >= 2
+  const j = await res.json();
+  sheetDeleteSupported = !!(j && j.version >= 2);
+  return sheetDeleteSupported;
+}
 
-  btn.classList.add('syncing'); btn.textContent='⟳ Pushing…';
-  setSyncStatus('info', `⟳ Pushing ${payload.length} sessions to Google Sheets…`);
+async function flushSheetDeletes() {
+  const list = getPendingDeletes();
+  if (!list.length || flushingDeletes || DASH_SHEETS_URL === 'YOUR_APPS_SCRIPT_URL_HERE') return;
+  flushingDeletes = true;
   try {
-    const res=await fetch(DASH_SHEETS_URL,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
-    const json=await res.json();
-    if (json.success) {
-      markSynced(payload.map(p=>p.id));
-      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pushed!';
-      const msg=`✓ Pushed ${json.added} new + ${json.updated} updated rows to Google Sheets`;
-      showToast(msg); setSyncStatus('success', msg);
-      setLastSynced();
-      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='📊 Push to Sheets'; },3000);
-    } else throw new Error(json.error||'Unknown error');
-  } catch(err) {
-    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
-    const msg='✕ Push failed — see console for details';
-    showToast('Push failed'); setSyncStatus('error', msg); console.error(err);
-    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='📊 Push to Sheets'; },3000);
+    if (!(await sheetSupportsDelete())) {
+      setSyncStatus('info', `⏳ ${list.length} deleted entr${list.length > 1 ? 'ies are' : 'y is'} still on your Google Sheet. Deploy the updated Apps Script (new version) and ${list.length > 1 ? 'they' : 'it'} will be removed automatically.`);
+      return;
+    }
+    const res = await fetch(DASH_SHEETS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'delete', items: list }) });
+    const j = await res.json();
+    if (!j.success) throw new Error(j.error || 'Delete failed');
+    const sent = new Set(list.map(x => x.key));
+    setPendingDeletes(getPendingDeletes().filter(x => !sent.has(x.key)));
+    setSyncStatus('success', j.deleted ? `✓ Also removed ${j.deleted} row${j.deleted > 1 ? 's' : ''} from Google Sheets` : '✓ Nothing left to remove on Google Sheets');
+  } catch (err) {
+    console.error('Sheet delete error:', err);
+    setSyncStatus('error', '⚠ Could not reach Google Sheets to remove the deleted entry. It will retry next time.');
+  } finally {
+    flushingDeletes = false;
+  }
+}
+
+function onTableClick(e) {
+  const del = e.target.closest('.del-btn'), yes = e.target.closest('.del-yes'), no = e.target.closest('.del-no');
+  if (del) {
+    del.closest('td').innerHTML = `<span class="del-confirm">Delete? <button class="del-yes" data-pid="${del.dataset.pid}" data-start="${del.dataset.start}">Yes</button><button class="del-no">No</button></span>`;
+  } else if (yes) {
+    deleteSession(yes.dataset.pid, Number(yes.dataset.start));
+  } else if (no) {
+    renderDashboard();
   }
 }
 
@@ -655,6 +732,7 @@ async function pullFromSheets() {
   if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
   const btn=document.getElementById('pullBtn');
   btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
+  await flushSheetDeletes();   // clear out any waiting deletions first
   setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
 
   try {
@@ -683,6 +761,7 @@ async function pullFromSheets() {
 
     sheetSessions.forEach(sess => {
       const projName = sess.project;
+      if (isDeleted(projName, sess)) return;   // you deleted this one on purpose
       // Find or create the project locally
       let proj = state.projects.find(p => p.name === projName);
       if (!proj) {
@@ -745,7 +824,158 @@ function getLastSynced() {
 
 
 // ══ PRINT ══
-function printDashboard() { window.print(); }
+// The PDF is its own layout (not the screen dashboard squeezed onto paper): summary numbers,
+// key takeaways, where the time went, a trend chart, then the day-by-day log.
+
+// The date range the current filter covers, plus the matching earlier range for comparisons
+function periodInfo() {
+  const now = new Date(), f = (d, o) => d.toLocaleDateString('en-US', o);
+  if (dashFilter === 'day')
+    return { label: f(now, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }), name: 'Today', prev: null };
+  if (dashFilter === 'week') {
+    const w = new Date(now); w.setDate(w.getDate() - 7);
+    const w2 = new Date(w);  w2.setDate(w2.getDate() - 7);
+    return { label: `${f(w, { month: 'short', day: 'numeric' })} – ${f(now, { month: 'short', day: 'numeric', year: 'numeric' })}`,
+             name: 'Last 7 days', prev: [w2.getTime(), w.getTime()], prevName: 'the 7 days before' };
+  }
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  if (dashFilter === 'month')
+    return { label: f(now, { month: 'long', year: 'numeric' }), name: 'This month',
+             prev: [new Date(y, m - 1, 1).getTime(), Math.min(new Date(y, m - 1, d + 1).getTime(), new Date(y, m, 1).getTime())],
+             prevName: 'the same days last month' };
+  return { label: String(y), name: 'This year',
+           prev: [new Date(y - 1, 0, 1).getTime(), new Date(y - 1, m, d + 1).getTime()], prevName: 'the same stretch of last year' };
+}
+
+function secondsBetween(a, b) {
+  let t = 0;
+  state.projects.forEach(p => p.sessions.forEach(x => { if (x.start >= a && x.start < b) t += x.seconds; }));
+  return t;
+}
+
+function buildPrintReport() {
+  state = loadState();
+  const sessions = getAllDashSessions(), info = periodInfo();
+  const total = sessions.reduce((a, x) => a + x.seconds, 0);
+  const el = document.getElementById('printReport');
+  const now = new Date();
+  const generated = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + ' at ' +
+                    now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  const head = `
+    <div class="pr-head">
+      <div class="pr-brand"><h1>🌿 WS Lawn Care — Time Report</h1><p>Where your time went and what stands out</p></div>
+      <div class="pr-period"><b>${esc(info.label)}</b><span>${info.name} · Generated ${generated}</span></div>
+    </div>`;
+  const foot = `<div class="pr-foot"><span>WS Lawn Care Services, LLC · Titusville, FL</span><span>Time Tracker report</span></div>`;
+  if (!sessions.length) { el.innerHTML = head + '<div class="pr-empty">No time was tracked in this period.</div>' + foot; return; }
+
+  // ── numbers ──
+  const byProj = {}, byDay = {}, byHour = {};
+  sessions.forEach(x => {
+    const o = byProj[x.projectId] || (byProj[x.projectId] = { id: x.projectId, name: x.projectName, icon: x.projectIcon, secs: 0, count: 0 });
+    o.secs += x.seconds; o.count++;
+    const dk = new Date(x.start).toDateString();
+    const dd = byDay[dk] || (byDay[dk] = { ts: x.start, secs: 0 });
+    dd.secs += x.seconds;
+    const h = new Date(x.start).getHours(); byHour[h] = (byHour[h] || 0) + x.seconds;
+  });
+  const projData = Object.values(byProj).sort((a, b) => b.secs - a.secs);
+  projData.forEach(p => {
+    const i = state.projects.findIndex(q => q.id === p.id);
+    p.color = CHART_COLORS[(i < 0 ? 0 : i) % CHART_COLORS.length];
+    p.pct = Math.round(p.secs / total * 100);
+  });
+  const activeDays = Object.keys(byDay).length;
+  const avgSession = Math.round(total / sessions.length);
+  const longest = sessions.reduce((a, x) => x.seconds > a.seconds ? x : a, sessions[0]);
+  const dayLabel = ts => new Date(ts).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const top = projData[0];
+
+  // ── key takeaways ──
+  const tk = [];
+  tk.push(['⏱', `<b>${formatHM(total)}</b> tracked across <b>${sessions.length}</b> session${sessions.length > 1 ? 's' : ''} on <b>${activeDays}</b> day${activeDays > 1 ? 's' : ''}.`]);
+  tk.push(['🏆', `Most time went to <b>${top.icon} ${esc(top.name)}</b> — ${formatHM(top.secs)}, <b>${top.pct}%</b> of everything tracked.`]);
+  if (projData.length >= 3) {
+    const n = projData.length >= 4 ? 3 : 2;
+    const share = Math.round(projData.slice(0, n).reduce((a, p) => a + p.secs, 0) / total * 100);
+    tk.push(['🎯', `Your top ${n} projects made up <b>${share}%</b> of your time.`]);
+  }
+  if (dashFilter === 'day') {
+    const ph = Object.keys(byHour).map(Number).sort((a, b) => byHour[b] - byHour[a])[0];
+    tk.push(['⏰', `Most active hour: <b>${ph % 12 || 12} ${ph < 12 ? 'AM' : 'PM'}</b> (${formatHM(byHour[ph])}).`]);
+  } else {
+    const bd = Object.values(byDay).sort((a, b) => b.secs - a.secs)[0];
+    tk.push(['📅', `Busiest day: <b>${dayLabel(bd.ts)}</b> — ${formatHM(bd.secs)}.`]);
+  }
+  tk.push(['📏', `Longest single session: <b>${formatHM(longest.seconds)}</b> on ${esc(longest.projectName)} (${dayLabel(longest.start)}). Average session: <b>${formatHM(avgSession)}</b>` +
+                 (activeDays > 1 ? `; average per active day: <b>${formatHM(Math.round(total / activeDays))}</b>.` : '.')]);
+  if (info.prev) {
+    const pt = secondsBetween(info.prev[0], info.prev[1]);
+    if (pt > 0) {
+      const diff = total - pt, pct = Math.round(Math.abs(diff) / pt * 100);
+      tk.push([diff >= 0 ? '📈' : '📉', diff === 0 ? `Same as ${info.prevName} (${formatHM(pt)}).`
+        : `<b>${diff > 0 ? 'Up' : 'Down'} ${formatHM(Math.abs(diff))} (${diff > 0 ? '+' : '−'}${pct}%)</b> compared with ${info.prevName} (${formatHM(pt)}).`]);
+    }
+  }
+  const spent = state.projects.filter(p => p.allocatedSeconds && projLoggedAll(p) >= p.allocatedSeconds);
+  if (spent.length) tk.push(['⏳', `Time block fully used on: <b>${spent.map(p => esc(p.name)).join(', ')}</b>.`]);
+
+  // ── where time went ──
+  const names = projData.slice(0, 3).map(p => `<b>${p.icon} ${esc(p.name)}</b> (${p.pct}%)`);
+  const rest = projData.slice(3);
+  let story = `Most of your time went to <b>${top.icon} ${esc(top.name)}</b> — ${formatHM(top.secs)}, ${top.pct}% of the total.`;
+  if (names.length > 1) story += ` Next came ${names.slice(1).join(' and ')}.`;
+  if (rest.length) story += ` The other ${rest.length} project${rest.length > 1 ? 's' : ''} shared ${Math.round(rest.reduce((a, p) => a + p.secs, 0) / total * 100)}%.`;
+  if (projData.length > 1) story += top.pct >= 60 ? ' This was a tightly focused period.' : (top.pct < 40 && projData.length >= 4 ? ' Your time was spread across many projects.' : '');
+
+  const projRows = projData.map((p, i) => `
+    <tr>
+      <td class="pr-rank">${i + 1}</td>
+      <td><span class="pr-swatch" style="background:${p.color}"></span>${p.icon} ${esc(p.name)}</td>
+      <td class="num">${formatHM(p.secs)}</td>
+      <td style="width:32%"><div class="pr-bar"><i style="width:${Math.max(2, p.secs / total * 100)}%;background:${p.color}"></i></div></td>
+      <td class="num">${p.pct}%</td>
+      <td class="num">${p.count}</td>
+      <td class="num">${formatHM(Math.round(p.secs / p.count))}</td>
+    </tr>`).join('');
+
+  // ── trend chart (plain HTML bars so it always prints crisp) ──
+  const bk = getBuckets(sessions), mx = Math.max(...bk.data, 0.01);
+  const chart = bk.data.map(v => `
+    <div class="pr-col${v === mx ? ' max' : ''}"><span class="val">${v ? v + 'h' : ''}</span><div class="bar" style="height:${v ? Math.max(2, Math.round(v / mx * 78)) : 0}px"></div></div>`).join('');
+  const labels = bk.labels.map(l => `<span>${l}</span>`).join('');
+
+  // ── day-by-day log ──
+  const days = {};
+  [...sessions].sort((a, b) => a.start - b.start).forEach(x => { (days[new Date(x.start).toDateString()] = days[new Date(x.start).toDateString()] || []).push(x); });
+  const logRows = Object.keys(days).sort((a, b) => new Date(b) - new Date(a)).map(k => {
+    const list = days[k], sub = list.reduce((a, x) => a + x.seconds, 0);
+    return `<tr class="day-row"><td colspan="3">${new Date(list[0].start).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</td><td class="num">${formatHM(sub)}</td></tr>` +
+      list.map(x => `<tr><td>${x.projectIcon} ${esc(x.projectName)}</td><td>${fmtTime(x.start)}</td><td>${fmtTime(x.end)}</td><td class="num">${formatHM(x.seconds)}</td></tr>`).join('');
+  }).join('');
+
+  el.innerHTML = head + `
+    <div class="pr-kpis">
+      <div class="pr-kpi hl"><div class="l">Total time</div><div class="v">${formatHM(total)}</div><div class="s">${info.name}</div></div>
+      <div class="pr-kpi"><div class="l">Sessions</div><div class="v">${sessions.length}</div><div class="s">on ${activeDays} day${activeDays > 1 ? 's' : ''}</div></div>
+      <div class="pr-kpi"><div class="l">Avg session</div><div class="v">${formatHM(avgSession)}</div><div class="s">per entry</div></div>
+      <div class="pr-kpi"><div class="l">Top project</div><div class="v" style="font-size:13px;padding:3px 0">${top.icon} ${esc(top.name)}</div><div class="s">${formatHM(top.secs)} · ${top.pct}%</div></div>
+    </div>
+    <div class="pr-sec"><h2>Key takeaways</h2><div class="pr-take"><ul>${tk.map(t => `<li><span class="ic">${t[0]}</span><span>${t[1]}</span></li>`).join('')}</ul></div></div>
+    <div class="pr-sec"><h2>Where your time went</h2>
+      <p class="pr-summary">${story}</p>
+      <table class="pr-proj"><thead><tr><th></th><th>Project</th><th class="num">Time</th><th>Share</th><th class="num">%</th><th class="num">Sessions</th><th class="num">Avg</th></tr></thead><tbody>${projRows}</tbody></table>
+    </div>
+    <div class="pr-sec"><h2>${bk.title}</h2><div class="pr-chart">${chart}</div><div class="pr-labels">${labels}</div></div>
+    <div class="pr-sec log"><h2>Session log by day</h2>
+      <table class="pr-table"><thead><tr><th>Project</th><th>Start</th><th>End</th><th class="num">Duration</th></tr></thead><tbody>${logRows}</tbody></table>
+    </div>` + foot;
+}
+
+function projLoggedAll(p) { return p.sessions.reduce((a, x) => a + x.seconds, 0); }
+
+function printDashboard() { buildPrintReport(); window.print(); }
 
 
 // ══ TOAST ══
@@ -764,6 +994,8 @@ function notifyDashHeight() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('sessionTableBody').addEventListener('click', onTableClick);
+  window.addEventListener('beforeprint', buildPrintReport);   // also covers Ctrl+P
   // The tracker page (or another tab) saves new sessions — refresh live
   window.addEventListener('storage', e => {
     if (e.key !== STORAGE_KEY) return;
@@ -777,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(renderDashboard, 30000);
   renderDashboard();
   setTimeout(notifyDashHeight, 200);
+  flushSheetDeletes();   // retry any deletions that are still waiting to reach the sheet
 });
 
 </script>
