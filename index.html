@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WS Lawn Care — Time Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 /* ══════════════════════════════════════
    BASE
@@ -14,24 +13,13 @@
 
 html, body {
   font-family: 'IBM Plex Sans', sans-serif;
-  background: #f8fafc;
+  background: transparent;
   color: #111827;
-  min-height: 100vh;
   overflow-x: hidden;
 }
 
-/* ══════════════════════════════════════
-   PAGE LAYOUT
-══════════════════════════════════════ */
-.page-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 24px 16px 48px;
-  gap: 0;
-  min-height: 100vh;
-}
-
+/* PAGE LAYOUT */
+.page-wrap { display: flex; flex-direction: column; align-items: center; padding: 12px 16px; }
 /* ══════════════════════════════════════
    WIDGET SECTION
 ══════════════════════════════════════ */
@@ -39,12 +27,13 @@ html, body {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 28px;
+  margin-bottom: 0;
   position: relative;
   z-index: 20;
 }
 
 #widget {
+  position: relative;
   width: 380px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -77,6 +66,14 @@ html, body {
   font-family: 'IBM Plex Mono', monospace; font-size: 11px;
   font-weight: 600; letter-spacing: 0.12em; color: #15803d; text-transform: uppercase;
 }
+.header-countdown {
+  display: none; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+  color: #15803d; background: #dcfce7; border: 1px solid #86efac;
+  border-radius: 999px; padding: 1px 8px;
+}
+.header-countdown.show { display: inline-block; }
+.header-countdown.warn { color: #b45309; background: #fef3c7; border-color: #fcd34d; animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.55; } }
 .header-controls { display: flex; gap: 6px; }
 .ctrl-btn {
   width: 26px; height: 26px; border: none; border-radius: 6px;
@@ -88,12 +85,23 @@ html, body {
 
 /* ── Timer Bar ── */
 .timer-bar {
+  position: relative;
   padding: 12px 16px;
   background: rgba(74,222,128,0.07);
   border-bottom: 1px solid #bbf7d0;
   display: flex; align-items: center; gap: 12px;
 }
 .timer-bar.idle { background: #f9fafb; border-bottom-color: #e5e7eb; }
+.timer-info { flex: 1; min-width: 0; }
+.timer-sub { font-size: 10.5px; color: #6b7280; font-family: 'IBM Plex Mono', monospace; margin-top: 1px; }
+.timer-sub:empty { display: none; }
+.budget-track { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(0,0,0,0.06); display: none; }
+.timer-bar.has-block .budget-track { display: block; }
+.budget-fill { height: 100%; width: 0; background: #16a34a; transition: width 1s linear, background 0.3s; }
+.timer-bar.warn { background: #fffbeb; border-bottom-color: #fde68a; }
+.timer-bar.warn .timer-display { color: #d97706; animation: blink 1s ease-in-out infinite; }
+.timer-bar.warn .timer-sub { color: #b45309; font-weight: 600; }
+.timer-bar.warn .budget-fill { background: #f59e0b; }
 .timer-project-name {
   flex: 1; font-size: 13px; font-weight: 500; color: #111827;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -142,7 +150,7 @@ html, body {
 .empty-state .empty-icon { display: block; font-size: 24px; margin-bottom: 6px; }
 
 .project-item {
-  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 14px;
   cursor: pointer; border-left: 2px solid transparent;
   border-bottom: 1px solid #f3f4f6;
   transition: background 0.12s, border-color 0.12s;
@@ -164,6 +172,22 @@ html, body {
 .project-item.active-project .project-title { color: #15803d; }
 .project-sub { font-size: 11px; color: #9ca3af; font-family: 'IBM Plex Mono', monospace; margin-top: 1px; }
 .project-time { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6b7280; flex-shrink: 0; min-width: 36px; text-align: right; }
+.block-chip {
+  display: inline-block; max-width: 100%; border: none; background: none; padding: 0; margin-top: 1px;
+  cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280;
+  text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.block-chip:hover { text-decoration: underline; }
+.block-chip.ok    { color: #15803d; }
+.block-chip.low   { color: #b45309; font-weight: 600; }
+.block-chip.over  { color: #dc2626; font-weight: 600; }
+.block-chip.unset { color: #b45309; }
+.row-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.row-bar-fill { height: 100%; width: 0; background: #86efac; transition: width 1s linear; }
+.project-item.active-project .row-bar-fill { background: #16a34a; }
+.project-item[data-state="low"]  .row-bar-fill { background: #f59e0b; }
+.project-item[data-state="over"] .row-bar-fill { background: #ef4444; }
+.project-item[data-state="unset"] .row-bar { display: none; }
 .delete-btn {
   width: 22px; height: 22px; border: 1px solid #e5e7eb; border-radius: 5px;
   background: #fff; color: #9ca3af; font-size: 11px; cursor: pointer;
@@ -182,7 +206,15 @@ html, body {
   padding: 6px 10px; font-family: 'IBM Plex Sans', sans-serif; font-size: 12px;
   color: #111827; outline: none; caret-color: #16a34a; transition: border-color 0.15s, background 0.15s;
 }
+.add-input { min-width: 0; }
 .add-input:focus { border-color: #86efac; background: #fff; }
+.add-select {
+  width: 92px; flex-shrink: 0; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 7px;
+  padding: 6px 4px; font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; color: #111827;
+  outline: none; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.add-select:focus { border-color: #86efac; background: #fff; }
+.add-select.empty { color: #9ca3af; }
 .add-input::placeholder { color: #9ca3af; }
 .add-btn {
   padding: 6px 12px; background: #f0fdf4; border: 1px solid #86efac;
@@ -239,188 +271,6 @@ html, body {
 .export-btn.error   { border-color: #fca5a5; color: #ef4444; }
 
 /* ══════════════════════════════════════
-   DASHBOARD
-══════════════════════════════════════ */
-#dashboard {
-  width: 100%;
-  max-width: 1100px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* ── Dashboard Header ── */
-.dash-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.dash-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.dash-title span { font-size: 20px; }
-.dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.dash-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 14px; border-radius: 8px; font-size: 12px;
-  font-weight: 600; cursor: pointer; transition: all 0.15s;
-  font-family: 'IBM Plex Sans', sans-serif; border: 1px solid;
-}
-.btn-print {
-  background: #fff; border-color: #d1d5db; color: #374151;
-}
-.btn-print:hover { background: #f9fafb; border-color: #9ca3af; }
-.btn-sheets {
-  background: #15803d; border-color: #15803d; color: #fff;
-}
-.btn-sheets:hover { background: #166534; }
-.btn-sheets.syncing { background: #d97706; border-color: #d97706; cursor: wait; }
-.btn-sheets.synced  { background: #16a34a; border-color: #16a34a; }
-.btn-sheets.error   { background: #ef4444; border-color: #ef4444; }
-.btn-pull {
-  background: #fff; border-color: #86efac; color: #15803d;
-}
-.btn-pull:hover { background: #f0fdf4; }
-.btn-pull.syncing { border-color: #fbbf24; color: #d97706; cursor: wait; }
-.btn-pull.synced  { background: #f0fdf4; border-color: #16a34a; color: #15803d; }
-.btn-pull.error   { border-color: #fca5a5; color: #ef4444; }
-
-/* Sync status bar */
-.sync-status-bar {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  margin-top: 4px;
-}
-.sync-status-bar.show { display: flex; }
-.sync-status-bar.info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.sync-status-bar.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-.sync-status-bar.error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-
-/* ── Dash Filter Tabs ── */
-.dash-filter-wrap {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 4px;
-  width: fit-content;
-}
-.dash-tab {
-  padding: 6px 16px; border-radius: 7px; font-size: 12px; font-weight: 600;
-  letter-spacing: 0.05em; text-transform: uppercase; color: #9ca3af;
-  cursor: pointer; transition: background 0.15s, color 0.15s; user-select: none;
-}
-.dash-tab.active { background: #15803d; color: #fff; }
-.dash-tab:hover:not(.active) { background: #f0fdf4; color: #15803d; }
-
-/* ── KPI Cards ── */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-@media (max-width: 700px) { .kpi-row { grid-template-columns: repeat(2,1fr); } }
-
-.kpi-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: box-shadow 0.15s;
-}
-.kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
-.kpi-label {
-  font-size: 11px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.1em; color: #9ca3af;
-}
-.kpi-value {
-  font-family: 'IBM Plex Mono', monospace; font-size: 28px;
-  font-weight: 600; color: #111827; line-height: 1;
-}
-.kpi-sub { font-size: 12px; color: #6b7280; }
-.kpi-card.highlight { background: #f0fdf4; border-color: #bbf7d0; }
-.kpi-card.highlight .kpi-value { color: #15803d; }
-
-/* ── Charts Row ── */
-.charts-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 14px;
-}
-@media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
-
-.card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 20px;
-}
-.card-title {
-  font-size: 13px; font-weight: 600; color: #374151;
-  margin-bottom: 16px; display: flex; align-items: center; gap: 6px;
-}
-.card-title .dot {
-  width: 6px; height: 6px; border-radius: 50%; background: #16a34a;
-}
-.chart-wrap { position: relative; height: 200px; }
-
-/* ── Project Breakdown (donut legend) ── */
-.donut-wrap { position: relative; height: 160px; }
-.donut-legend { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-.legend-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-}
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.legend-label { font-size: 12px; color: #374151; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.legend-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280; }
-
-/* ── Session Table ── */
-.table-wrap { overflow-x: auto; }
-table {
-  width: 100%; border-collapse: collapse; font-size: 12px;
-}
-thead tr { border-bottom: 2px solid #e5e7eb; }
-th {
-  padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af;
-  white-space: nowrap;
-}
-tbody tr {
-  border-bottom: 1px solid #f3f4f6;
-  transition: background 0.1s;
-}
-tbody tr:hover { background: #f9fafb; }
-tbody tr:last-child { border-bottom: none; }
-td { padding: 10px 12px; color: #374151; vertical-align: middle; }
-td .project-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: #f0fdf4; border: 1px solid #bbf7d0;
-  border-radius: 5px; padding: 2px 7px; font-size: 11px; color: #15803d; font-weight: 500;
-}
-td .duration-pill {
-  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-  background: #f1f5f9; border-radius: 4px; padding: 2px 6px; color: #374151;
-}
-.no-data { text-align: center; padding: 32px; color: #9ca3af; font-size: 13px; }
-
-/* ══════════════════════════════════════
    TOAST
 ══════════════════════════════════════ */
 #toast {
@@ -436,28 +286,138 @@ td .duration-pill {
 #toast.show { transform: translateX(-50%) translateY(0); }
 
 /* ══════════════════════════════════════
-   PRINT STYLES
+   TIME BLOCK PROMPT
 ══════════════════════════════════════ */
-@media print {
-  body { background: #fff; }
-  .widget-section, .dash-actions, .dash-filter-wrap, #toast { display: none !important; }
-  .page-wrap { padding: 0; }
-  #dashboard { max-width: 100%; }
-  .card, .kpi-card { break-inside: avoid; box-shadow: none; border: 1px solid #d1d5db; }
-  .kpi-row { grid-template-columns: repeat(4,1fr); }
-  .charts-row { grid-template-columns: 2fr 1fr; }
-  .print-header {
-    display: flex !important;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #15803d;
-  }
-  .print-header h1 { font-size: 18px; color: #15803d; }
-  .print-header p { font-size: 12px; color: #6b7280; }
+.block-overlay {
+  position: absolute; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(255,255,255,0.9); backdrop-filter: blur(3px);
 }
-.print-header { display: none; }
+.block-overlay.show { display: flex; }
+.block-card {
+  width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+  padding: 18px 16px 16px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+.block-emoji { font-size: 28px; line-height: 1; margin-bottom: 6px; }
+.block-title { font-size: 16px; font-weight: 600; color: #111827; }
+.block-text { font-size: 12.5px; color: #4b5563; line-height: 1.5; margin: 6px 0 14px; }
+.block-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+.block-btn {
+  flex: 1; padding: 9px 6px; border: 1px solid #16a34a; background: #16a34a; color: #fff;
+  border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: background 0.15s;
+}
+.block-btn:hover { background: #15803d; }
+.block-btn.ghost { background: #fff; color: #4b5563; border-color: #d1d5db; width: 100%; }
+.block-btn.ghost:hover { background: #f9fafb; }
+.block-actions .block-btn.ghost { width: auto; }
+.block-select {
+  width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 13px; font-family: inherit; color: #111827; background: #fff;
+}
+
+/* ══════════════════════════════════════
+   DAY PLAN
+══════════════════════════════════════ */
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none !important; }
+.next-strip {
+  display: none; align-items: center; gap: 8px; padding: 7px 14px;
+  background: #eff6ff; border-bottom: 1px solid #bfdbfe; font-size: 12px; color: #1e3a8a;
+}
+.next-strip.show { display: flex; }
+.next-strip.due { background: #fef3c7; border-bottom-color: #fde68a; color: #78350f; }
+.next-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.next-go {
+  flex-shrink: 0; padding: 4px 10px; border: none; border-radius: 6px; background: #16a34a; color: #fff;
+  font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.next-go:hover { background: #15803d; }
+
+.view-tabs { display: flex; gap: 4px; padding: 8px 14px 0; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.vtab {
+  flex: 1; padding: 7px 0; border: none; border-bottom: 2px solid transparent; background: none;
+  font-family: inherit; font-size: 12px; font-weight: 600; color: #9ca3af; cursor: pointer;
+}
+.vtab:hover { color: #6b7280; }
+.vtab.active { color: #15803d; border-bottom-color: #16a34a; }
+
+.plan-toolbar { display: flex; align-items: center; gap: 4px; padding: 8px 12px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.plan-today-btn {
+  padding: 4px 11px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff;
+  font-family: inherit; font-size: 11.5px; font-weight: 600; color: #374151; cursor: pointer; margin-right: 4px;
+}
+.plan-today-btn:hover { background: #f9fafb; }
+.plan-nav {
+  width: 26px; height: 26px; border: none; border-radius: 50%; background: none; cursor: pointer;
+  font-size: 16px; line-height: 1; color: #4b5563;
+}
+.plan-nav:hover { background: #f1f5f9; }
+.plan-date { font-size: 12.5px; font-weight: 600; color: #111827; margin-left: 6px; white-space: nowrap; }
+
+.plan-tray-wrap { padding: 8px 12px 6px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+.plan-hint { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: #6b7280; margin-bottom: 6px; }
+.plan-hint #planTotal { font-family: 'IBM Plex Mono', monospace; color: #15803d; font-weight: 600; white-space: nowrap; }
+.plan-tray { display: flex; flex-wrap: wrap; gap: 5px; max-height: 76px; overflow-y: auto; scrollbar-width: thin; }
+.plan-empty { font-size: 11.5px; color: #9ca3af; padding: 4px 0; }
+.plan-chip {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 8px 4px 7px;
+  border-radius: 7px; background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid var(--c, #16a34a);
+  font-size: 11.5px; color: #111827; cursor: grab; touch-action: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.plan-chip:hover { border-color: var(--c, #16a34a); background: #f0fdf4; }
+.pc-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.pc-left { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6b7280; }
+
+.plan-scroll { position: relative; height: 320px; overflow-y: auto; background: #fff; scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+.plan-grid { position: relative; }
+#planBg { position: absolute; inset: 0; }
+.plan-hline { position: absolute; left: 46px; right: 0; border-top: 1px solid #e5e7eb; }
+.plan-half  { position: absolute; left: 46px; right: 0; border-top: 1px dotted #eef0f3; }
+.plan-hlabel { position: absolute; left: 0; width: 40px; text-align: right; font-size: 9.5px; color: #9ca3af; transform: translateY(-50%); font-family: 'IBM Plex Mono', monospace; }
+.plan-entries { position: absolute; top: 0; bottom: 0; left: 52px; right: 8px; }
+#planNow { position: absolute; left: 0; right: 0; height: 0; z-index: 5; pointer-events: none; display: none; }
+.now-line { position: absolute; left: 46px; right: 0; border-top: 2px solid #ea4335; }
+.now-dot  { position: absolute; left: 41px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #ea4335; }
+.now-pill {
+  position: absolute; left: 0; top: -7px; width: 40px; text-align: center; font-size: 9px; font-weight: 700;
+  background: #ea4335; color: #fff; border-radius: 8px; padding: 1px 0; font-family: 'IBM Plex Mono', monospace;
+}
+
+.plan-entry {
+  position: absolute; left: 0; right: 0; display: flex; align-items: flex-start; gap: 4px; overflow: hidden;
+  padding: 2px 4px 2px 6px; border-radius: 6px; border-left: 3px solid var(--c, #16a34a); background: var(--bg, #dcfce7);
+  font-size: 11px; line-height: 13px; color: #111827; cursor: grab; touch-action: none; z-index: 2;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+}
+.plan-entry.dragging { z-index: 6; cursor: grabbing; box-shadow: 0 6px 16px rgba(0,0,0,0.22); }
+.plan-entry.tiny { padding: 0 4px 0 6px; align-items: center; }
+.plan-entry.tiny .pe-time { display: none; }
+.plan-entry.done { opacity: 0.55; }
+.plan-entry.done .pe-name { text-decoration: line-through; }
+.plan-entry.active { box-shadow: 0 0 0 2px var(--c, #16a34a), 0 3px 10px rgba(0,0,0,0.18); }
+.pe-main { flex: 1; min-width: 0; }
+.pe-name { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pe-time { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-entry.active .pe-time { color: #15803d; font-weight: 600; }
+.pe-actions { display: flex; gap: 2px; flex-shrink: 0; align-items: center; }
+.pe-btn {
+  width: 16px; height: 16px; padding: 0; border: none; border-radius: 4px; background: rgba(255,255,255,0.75);
+  font-size: 8px; color: #374151; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.pe-btn:hover { background: #fff; color: #111827; }
+.pe-check { font-size: 11px; color: #15803d; font-weight: 700; padding: 0 2px; }
+.pe-handle { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; cursor: ns-resize; touch-action: none; }
+.pe-handle::after { content: ''; display: block; width: 18px; height: 2px; border-radius: 1px; background: rgba(0,0,0,0.25); margin: 3px auto 0; }
+.plan-entry.tiny .pe-handle { height: 4px; }
+.plan-entry.tiny .pe-handle::after { margin-top: 1px; }
+.plan-preview {
+  position: absolute; left: 0; right: 0; display: none; border: 2px dashed #16a34a; background: rgba(22,163,74,0.12);
+  border-radius: 6px; pointer-events: none; z-index: 4;
+}
+.plan-ghost {
+  position: fixed; z-index: 200; pointer-events: none; padding: 5px 10px; border-radius: 8px; background: #fff;
+  border: 1px solid #16a34a; box-shadow: 0 6px 18px rgba(0,0,0,0.2); font-size: 12px; color: #111827; white-space: nowrap;
+}
+
 </style>
 </head>
 <body>
@@ -471,8 +431,10 @@ td .duration-pill {
         <div class="header-left">
           <div class="logo-dot" id="pulseDot"></div>
           <span class="logo-text">WS Time Tracker</span>
+          <span class="header-countdown" id="headerCountdown"></span>
         </div>
         <div class="header-controls">
+          <button class="ctrl-btn" id="soundBtn" title="Alert sound on" onclick="toggleSound()">🔔</button>
           <button class="ctrl-btn" id="minimizeBtn" title="Minimize/Expand" onclick="toggleMinimize()">─</button>
         </div>
       </div>
@@ -480,11 +442,27 @@ td .duration-pill {
       <div id="mainBody">
         <div class="timer-bar idle" id="timerBar">
           <div class="project-icon" id="timerIcon">⏸</div>
-          <div class="timer-project-name idle-text" id="timerProjectName">No active timer</div>
+          <div class="timer-info">
+            <div class="timer-project-name idle-text" id="timerProjectName">No active timer</div>
+            <div class="timer-sub" id="timerSub"></div>
+          </div>
           <div class="timer-display idle" id="timerDisplay">00:00</div>
           <button class="play-stop-btn" id="playStopBtn" onclick="toggleTimer()">▶</button>
+          <div class="budget-track"><div class="budget-fill" id="budgetFill"></div></div>
         </div>
 
+        <!-- Up next: shown in both tabs so the next planned block is always in view -->
+        <div class="next-strip" id="nextStrip">
+          <span class="next-text" id="nextText"></span>
+          <button class="next-go" id="nextGo" onclick="startEntry(this.dataset.id)">▶ Start</button>
+        </div>
+
+        <div class="view-tabs">
+          <button class="vtab active" id="vtabProjects" onclick="setView('projects')">Projects</button>
+          <button class="vtab" id="vtabPlan" onclick="setView('plan')">📅 Day Plan</button>
+        </div>
+
+        <div id="viewProjects">
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
           <input class="search-input" id="searchInput" placeholder="Search projects…" oninput="filterProjects()">
@@ -494,6 +472,7 @@ td .duration-pill {
 
         <div class="add-project-row">
           <input class="add-input" id="newProjectInput" placeholder="New project name…" onkeydown="if(event.key==='Enter')addProject()">
+          <select class="add-select empty" id="newProjectMinutes" title="Time you agree to spend on this project" aria-label="Time block" onchange="this.classList.toggle('empty', !this.value)"></select>
           <button class="add-btn" onclick="addProject()">+ Add</button>
         </div>
 
@@ -513,191 +492,148 @@ td .duration-pill {
           </div>
         </div>
 
+        </div><!-- end viewProjects -->
+
+        <div id="viewPlan" style="display:none">
+          <div class="plan-toolbar">
+            <button class="plan-today-btn" id="planTodayBtn" onclick="planGoToday()">Today</button>
+            <button class="plan-nav" onclick="planShift(-1)" aria-label="Previous day" title="Previous day">‹</button>
+            <button class="plan-nav" onclick="planShift(1)" aria-label="Next day" title="Next day">›</button>
+            <span class="plan-date" id="planDateLabel"></span>
+          </div>
+          <div class="plan-tray-wrap">
+            <div class="plan-hint"><span>Drag a project onto the day (or tap it)</span><span id="planTotal"></span></div>
+            <div class="plan-tray" id="planTray"></div>
+          </div>
+          <div class="plan-scroll" id="planScroll">
+            <div class="plan-grid" id="planGrid">
+              <div id="planBg"></div>
+              <div class="plan-entries" id="planEntries"></div>
+              <div id="planNow"><span class="now-pill"></span><span class="now-dot"></span><div class="now-line"></div></div>
+            </div>
+          </div>
+        </div>
+
         <div class="widget-footer">
           <span class="footer-label" id="footerDate"></span>
           <button class="export-btn" id="syncBtn" onclick="syncToSheets()">↑ Sync to Sheets</button>
         </div>
       </div>
+
+      <!-- Time block prompt (time's up / edit block) -->
+      <div class="block-overlay" id="blockOverlay" role="dialog" aria-modal="true" aria-labelledby="blockTitle">
+        <div class="block-card">
+          <div class="block-emoji" id="blockEmoji">⏰</div>
+          <div class="block-title" id="blockTitle"></div>
+          <div class="block-text" id="blockText"></div>
+          <div id="blockBody"></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- ══ DASHBOARD ══ -->
-  <div id="dashboard">
-
-    <!-- Print-only header -->
-    <div class="print-header">
-      <div>
-        <h1>🌿 WS Lawn Care — Time Report</h1>
-        <p>Generated: <span id="printDate"></span></p>
-      </div>
-      <div style="text-align:right;font-size:12px;color:#6b7280;">
-        <div id="printPeriod"></div>
-        <div>wslauncareservicesllc.com</div>
-      </div>
-    </div>
-
-    <!-- Dash Header -->
-    <div class="dash-header">
-      <div>
-        <div class="dash-title"><span>📊</span> Activity Dashboard</div>
-      </div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-        <!-- Dash Filter -->
-        <div class="dash-filter-wrap">
-          <div class="dash-tab active" onclick="setDashFilter('day',this)">Day</div>
-          <div class="dash-tab" onclick="setDashFilter('week',this)">Week</div>
-          <div class="dash-tab" onclick="setDashFilter('month',this)">Month</div>
-          <div class="dash-tab" onclick="setDashFilter('year',this)">Year</div>
-        </div>
-        <!-- Actions -->
-        <div class="dash-actions">
-          <button class="dash-btn btn-print" onclick="printDashboard()">🖨 Print PDF</button>
-          <button class="dash-btn btn-pull" id="pullBtn" onclick="pullFromSheets()">⬇ Pull from Sheets</button>
-          <button class="dash-btn btn-sheets" id="dashSyncBtn" onclick="dashSyncToSheets()">📊 Push to Sheets</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sync Status -->
-    <div class="sync-status-bar" id="syncStatusBar"></div>
-
-    <!-- KPI Cards -->
-    <div class="kpi-row">
-      <div class="kpi-card highlight">
-        <div class="kpi-label">Total Hours</div>
-        <div class="kpi-value" id="kpiTotal">0h 0m</div>
-        <div class="kpi-sub" id="kpiPeriodLabel">Today</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Sessions</div>
-        <div class="kpi-value" id="kpiSessions">0</div>
-        <div class="kpi-sub">Time entries</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Avg Session</div>
-        <div class="kpi-value" id="kpiAvg">—</div>
-        <div class="kpi-sub">Per entry</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Top Project</div>
-        <div class="kpi-value" id="kpiTopProject" style="font-size:15px;padding-top:4px;">—</div>
-        <div class="kpi-sub" id="kpiTopHours">No data yet</div>
-      </div>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="charts-row">
-      <!-- Bar Chart -->
-      <div class="card">
-        <div class="card-title"><div class="dot"></div><span id="barChartTitle">Hours by Day</span></div>
-        <div class="chart-wrap">
-          <canvas id="barChart"></canvas>
-        </div>
-      </div>
-      <!-- Donut -->
-      <div class="card">
-        <div class="card-title"><div class="dot"></div>By Project</div>
-        <div class="donut-wrap">
-          <canvas id="donutChart"></canvas>
-        </div>
-        <div class="donut-legend" id="donutLegend"></div>
-      </div>
-    </div>
-
-    <!-- Session Table -->
-    <div class="card">
-      <div class="card-title"><div class="dot"></div>Session Log</div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Project</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Duration</th>
-            </tr>
-          </thead>
-          <tbody id="sessionTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-  </div><!-- end dashboard -->
-</div><!-- end page-wrap -->
+</div>
 
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════
-// STATE
-// ══════════════════════════════════════
+// ══ STATE ══
 const STORAGE_KEY = 'ws_time_tracker_v2';
-const SHEETS_URL  = 'https://script.google.com/macros/s/AKfycbxOL0Ul0gHsg2p7WGoRG0UgHKHI9DNKgzqfckusk_Hy-HGzi-E9qHTMKvmLyegCE2Ujvg/exec';
-const DASH_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxOL0Ul0gHsg2p7WGoRG0UgHKHI9DNKgzqfckusk_Hy-HGzi-E9qHTMKvmLyegCE2Ujvg/exec';
+const SHEETS_URL  = 'https://script.google.com/macros/s/AKfycbwFYH8hEzQpWOPcdK7gmwbaARn0Xe8_lTnExg8B0Af_b0e60xZ4uu-dd11sfyT6y24VTA/exec';
 
 let state = loadState();
 let timerInterval  = null;
 let currentFilter  = 'day';   // widget filter
-let dashFilter     = 'day';   // dashboard filter
 let minimized      = false;
-let barChartInst   = null;
-let donutChartInst = null;
+let warnedKey      = null;    // so the 5-minute warning fires once per session
+let overlayState   = null;    // {mode, projId, resume} while the time block prompt is open
+let audioCtx       = null;
+let soundOn        = localStorage.getItem('ws_tracker_sound') !== 'off';
+const $ = id => document.getElementById(id);
 
 function defaultState() {
-  return { projects: [], activeProjectId: null, activeStart: null };
+  return { projects: [], activeProjectId: null, activeStart: null, activeEntryId: null, plan: [] };
 }
 function loadState() {
-  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : defaultState(); }
+  try { const r = localStorage.getItem(STORAGE_KEY); return normalizeState(r ? JSON.parse(r) : defaultState()); }
   catch { return defaultState(); }
+}
+function normalizeState(st) {
+  if (!st || typeof st !== 'object') return defaultState();
+  if (!Array.isArray(st.projects)) st.projects = [];
+  if (!Array.isArray(st.plan)) st.plan = [];
+  if (!('activeEntryId' in st)) st.activeEntryId = null;
+  return st;
 }
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function uid() { return Math.random().toString(36).slice(2,10); }
 
-// ══════════════════════════════════════
-// TIMER
-// ══════════════════════════════════════
+
+// ══ TIMER ══
 function toggleTimer() {
   if (state.activeProjectId) stopTimer();
   else showToast('Click a project to start tracking');
 }
 
-function startTimer(id) {
+function startTimer(id, entryId) {
+  const proj = state.projects.find(p => p.id === id);
+  if (!proj) return;
+  ensureAudio();
+  const ent = entryId ? entryById(entryId) : null;
+  // A used-up block can't just be started again — extend it on purpose first
+  if (proj.allocatedSeconds && projRemaining(proj) <= 0) { openBlockOverlay('timeup', id, true, ent ? ent.id : null); return; }
+  if (ent && entryRemaining(ent) <= 0) { showToast('That planned block is already complete'); return; }
   if (state.activeProjectId) stopTimer();
   state.activeProjectId = id;
+  state.activeEntryId = ent ? ent.id : null;
   state.activeStart = Date.now();
+  warnedKey = null;
   saveState();
-  renderProjects(); renderTimerBar();
+  renderProjects(); renderTimerBar(); refreshPlanUI();
   clearInterval(timerInterval);
   timerInterval = setInterval(tickTimer, 1000);
   startPulse();
+  checkBudget();   // warn straight away if the block is already nearly used up
 }
 
-function stopTimer() {
+// opts.capSeconds: never log more than this for the session (used when a block runs out,
+// so time spent away from the page is not counted past the limit)
+function stopTimer(opts) {
   if (!state.activeProjectId) return;
   const proj = state.projects.find(p => p.id === state.activeProjectId);
   if (proj && state.activeStart) {
-    const elapsed = Math.floor((Date.now() - state.activeStart) / 1000);
-    if (elapsed > 0) proj.sessions.push({ start: state.activeStart, end: Date.now(), seconds: elapsed });
+    let elapsed = Math.floor((Date.now() - state.activeStart) / 1000);
+    let end = Date.now();
+    if (opts && opts.capSeconds != null && elapsed > opts.capSeconds) {
+      elapsed = Math.max(0, opts.capSeconds);
+      end = state.activeStart + elapsed * 1000;
+    }
+    if (elapsed > 0) {
+      const sess = { start: state.activeStart, end, seconds: elapsed };
+      if (state.activeEntryId) sess.entryId = state.activeEntryId;   // which planned block it counted against
+      proj.sessions.push(sess);
+    }
   }
   state.activeProjectId = null;
+  state.activeEntryId = null;
   state.activeStart = null;
+  warnedKey = null;
   saveState();
   clearInterval(timerInterval);
-  renderTimerBar(); renderProjects(); renderSummary();
-  renderDashboard();
+  renderTimerBar(); renderProjects(); renderSummary(); refreshPlanUI();
   stopPulse();
 }
 
 function tickTimer() {
-  const elapsed = Math.floor((Date.now() - state.activeStart) / 1000);
-  document.getElementById('timerDisplay').textContent = formatMM(elapsed);
+  if (!state.activeProjectId) return;
+  paintTimer();
+  paintActiveRow();
   renderSummary();
+  checkBudget();   // last: it can stop the timer
 }
 
-// ══════════════════════════════════════
-// FORMAT HELPERS
-// ══════════════════════════════════════
+
+// ══ FORMAT HELPERS ══
 function formatMM(sec) {
   const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
@@ -713,9 +649,8 @@ function fmtTime(ts) {
   return new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
 }
 
-// ══════════════════════════════════════
-// FILTER HELPERS
-// ══════════════════════════════════════
+
+// ══ FILTER HELPERS ══
 function sessionInFilter(sess, filter) {
   const d = new Date(sess.start), now = new Date();
   if (filter === 'day')   return d.toDateString() === now.toDateString();
@@ -726,7 +661,6 @@ function sessionInFilter(sess, filter) {
 }
 
 function sessionInWidgetFilter(sess) { return sessionInFilter(sess, currentFilter); }
-function sessionInDashFilter(sess)   { return sessionInFilter(sess, dashFilter); }
 
 function projectSecondsInFilter(proj) {
   let total = proj.sessions.filter(sessionInWidgetFilter).reduce((a,s)=>a+s.seconds,0);
@@ -735,18 +669,235 @@ function projectSecondsInFilter(proj) {
   return total;
 }
 
-// ══════════════════════════════════════
-// WIDGET RENDER
-// ══════════════════════════════════════
+
+// ══ TIME BLOCKS ══
+// Every project carries allocatedSeconds: the total time you agreed to spend on it.
+// Projects saved before this feature have none and show "Set time block".
+const BLOCK_OPTIONS_MIN = (() => {
+  const a = [];
+  for (let m = 15; m <= 240; m += 15) a.push(m);    // 15 min steps up to 4 h
+  for (let m = 270; m <= 480; m += 30) a.push(m);   // then 30 min steps up to 8 h
+  return a;
+})();
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtLeft(sec) {
+  sec = Math.max(0, Math.ceil(sec));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  if (h > 0) return m ? `${h}h ${m}m` : `${h}h`;
+  if (m >= 10) return `${m}m`;
+  if (m > 0) return `${m}m ${pad(s)}s`;
+  return `${s}s`;
+}
+
+function projLogged(proj)   { return proj.sessions.reduce((a, s) => a + s.seconds, 0); }
+function activeElapsed()    { return state.activeStart ? Math.floor((Date.now() - state.activeStart) / 1000) : 0; }
+function projUsed(proj)     { return projLogged(proj) + (proj.id === state.activeProjectId ? activeElapsed() : 0); }
+function projRemaining(proj){ return proj.allocatedSeconds ? proj.allocatedSeconds - projUsed(proj) : null; }
+// Warn at 5 minutes left (or a quarter of the block, whichever is smaller)
+function warnThreshold(alloc) { return Math.min(300, Math.floor(alloc * 0.25)); }
+
+function fillBlockSelect() {
+  $('newProjectMinutes').innerHTML = '<option value="" disabled selected>⏳ Time…</option>' +
+    BLOCK_OPTIONS_MIN.map(m => `<option value="${m}">${fmtLeft(m*60)}</option>`).join('');
+}
+
+// ── Planned blocks (Day Plan entries) ──
+function entryById(id)  { return (state.plan || []).find(e => e.id === id) || null; }
+function projOf(e)      { return state.projects.find(p => p.id === e.projectId) || null; }
+function entryLogged(e) {
+  let t = 0;
+  state.projects.forEach(p => p.sessions.forEach(x => { if (x.entryId === e.id) t += x.seconds; }));
+  return t;
+}
+function entryUsed(e)      { return entryLogged(e) + (state.activeEntryId === e.id ? activeElapsed() : 0); }
+function entryRemaining(e) { return e.durMin * 60 - entryUsed(e); }
+
+// What is limiting the running timer right now: the planned block or the project's total time block,
+// whichever runs out first. Returns null when neither applies (count-up).
+function activeLimit() {
+  const proj = state.projects.find(p => p.id === state.activeProjectId);
+  if (!proj || !state.activeStart) return null;
+  const budget = proj.allocatedSeconds ? projRemaining(proj) : null;
+  const ent = state.activeEntryId ? entryById(state.activeEntryId) : null;
+  const slot = ent ? entryRemaining(ent) : null;
+  if (budget === null && slot === null) return null;
+  if (slot !== null && (budget === null || slot <= budget)) return { rem: slot, total: ent.durMin * 60, kind: 'slot', ent, proj };
+  return { rem: budget, total: proj.allocatedSeconds, kind: 'budget', ent, proj };
+}
+
+// Called every second while a timer runs (and once on load)
+function checkBudget() {
+  if (!state.activeProjectId || !state.activeStart) return;
+  const lim = activeLimit();
+  if (!lim) return;
+  if (lim.rem <= 0) { handleTimeUp(lim); return; }
+  const key = lim.proj.id + ':' + state.activeStart;
+  if (lim.rem <= warnThreshold(lim.total) && warnedKey !== key) {
+    warnedKey = key;
+    beep(2);
+    showToast(`⚠️ ${fmtLeft(lim.rem)} left on ${lim.proj.name}`);
+  }
+}
+
+function handleTimeUp(lim) {
+  const proj = lim.proj, ent = lim.ent;
+  const allowedBudget = proj.allocatedSeconds ? proj.allocatedSeconds - projLogged(proj) : Infinity;
+  const allowedSlot   = ent ? ent.durMin * 60 - entryLogged(ent) : Infinity;
+  const entId = ent ? ent.id : null;
+  stopTimer({ capSeconds: Math.max(0, Math.min(allowedBudget, allowedSlot)) });
+  beep(3);
+  openBlockOverlay(lim.kind === 'slot' ? 'slotdone' : 'timeup', proj.id, true, entId);
+}
+
+function blockChoices(usedSec, currentMin) {
+  let v = BLOCK_OPTIONS_MIN.filter(m => m * 60 > usedSec);
+  if (!v.length) { const base = Math.ceil(usedSec / 900) * 15; v = [base + 15, base + 30, base + 45, base + 60]; }
+  if (currentMin && !v.includes(currentMin)) { v.push(currentMin); v.sort((a, b) => a - b); }
+  return v;
+}
+
+function openBlockOverlay(mode, projId, resume, entryId) {
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  if (minimized) toggleMinimize();            // make sure the prompt can actually be seen
+  overlayState = { mode, projId, resume: !!resume, entryId: entryId || null, nextId: null };
+  const emoji = $('blockEmoji'), title = $('blockTitle'), text = $('blockText'), body = $('blockBody');
+
+  if (mode === 'timeup') {
+    emoji.textContent = '⏰';
+    title.textContent = "Time's up";
+    text.innerHTML = `You've used all <b>${fmtLeft(proj.allocatedSeconds)}</b> you set aside for <b>${esc(proj.name)}</b>.<br>` +
+      (resume ? 'Extend it on purpose to keep going, or call it done.' : 'Extend the block, or leave it as it is.');
+    body.innerHTML = `
+      <div class="block-actions">
+        <button class="block-btn" onclick="extendBlock(15)">+15 min</button>
+        <button class="block-btn" onclick="extendBlock(30)">+30 min</button>
+        <button class="block-btn" onclick="extendBlock(45)">+45 min</button>
+      </div>
+      <button class="block-btn ghost" onclick="closeBlockOverlay()">I'm done for now</button>`;
+  } else if (mode === 'slotdone') {
+    const ent = entryById(entryId), nx = ent ? nextAfter(ent) : null;
+    overlayState.nextId = nx ? nx.id : null;
+    const nxProj = nx ? projOf(nx) : null;
+    emoji.textContent = '✅';
+    title.textContent = 'Block complete';
+    text.innerHTML = `Your planned block for <b>${esc(proj.name)}</b> is finished.<br>` +
+      (nx ? `Up next: <b>${nxProj.icon} ${esc(nxProj.name)}</b> · ${fmtClock(nx.startMin)} · ${fmtLeft(nx.durMin * 60)}`
+          : "That was the last block planned for today. Add more time or call it done.");
+    body.innerHTML = nx ? `
+      <div class="block-actions">
+        <button class="block-btn" onclick="slotDoneStartNext()">▶ Start next</button>
+        <button class="block-btn ghost" onclick="extendEntryFromOverlay(15)">+15 min</button>
+      </div>
+      <button class="block-btn ghost" onclick="closeBlockOverlay()">I'm done for now</button>` : `
+      <div class="block-actions">
+        <button class="block-btn" onclick="extendEntryFromOverlay(15)">+15 min</button>
+        <button class="block-btn" onclick="extendEntryFromOverlay(30)">+30 min</button>
+      </div>
+      <button class="block-btn ghost" onclick="closeBlockOverlay()">I'm done for now</button>`;
+  } else {
+    const used = projUsed(proj), cur = proj.allocatedSeconds ? proj.allocatedSeconds / 60 : null;
+    emoji.textContent = '⏳';
+    title.textContent = cur ? 'Time block' : 'Set a time block';
+    text.innerHTML = cur
+      ? `<b>${esc(proj.name)}</b><br>${used > 0 ? fmtLeft(used) + ' used of ' + fmtLeft(proj.allocatedSeconds) : 'Nothing logged yet'}`
+      : `How much time do you agree to spend on <b>${esc(proj.name)}</b>?`;
+    body.innerHTML = `
+      <select class="block-select" id="blockSelect">
+        ${cur ? '' : '<option value="" disabled selected>Choose time…</option>'}
+        ${blockChoices(used, cur).map(m => `<option value="${m}" ${m === cur ? 'selected' : ''}>${fmtLeft(m*60)}</option>`).join('')}
+      </select>
+      <div class="block-actions">
+        <button class="block-btn" onclick="saveBlock()">Save</button>
+        <button class="block-btn ghost" onclick="closeBlockOverlay()">Cancel</button>
+      </div>`;
+  }
+  $('blockOverlay').classList.add('show');
+  const first = body.querySelector('button, select');
+  if (first) first.focus();
+}
+
+function closeBlockOverlay() {
+  $('blockOverlay').classList.remove('show');
+  overlayState = null;
+}
+
+function extendBlock(min) {
+  if (!overlayState) return;
+  const { projId, resume, entryId } = overlayState;
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  proj.allocatedSeconds = (proj.allocatedSeconds || 0) + min * 60;
+  saveState();
+  closeBlockOverlay();
+  ensureAudio();
+  showToast(`+${min} min added to ${proj.name}`);
+  if (resume) { const ent = entryById(entryId); startTimer(projId, ent && entryRemaining(ent) > 0 ? ent.id : null); } else renderProjects();
+}
+
+function saveBlock() {
+  if (!overlayState) return;
+  const min = parseInt($('blockSelect').value, 10);
+  if (!min) { showToast('Choose a time block first'); return; }
+  const proj = state.projects.find(p => p.id === overlayState.projId);
+  if (!proj) return;
+  proj.allocatedSeconds = min * 60;
+  saveState();
+  closeBlockOverlay();
+  renderProjects(); paintTimer();
+  showToast(`Time block set: ${fmtLeft(min * 60)}`);
+}
+
+// ── Alert sound (short beeps; can be muted with the bell button) ──
+function ensureAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+}
+function beep(count) {
+  if (!soundOn) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  for (let i = 0; i < count; i++) {
+    const t = audioCtx.currentTime + i * 0.3;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + 0.25);
+  }
+}
+function paintSoundBtn() {
+  const b = $('soundBtn');
+  b.textContent = soundOn ? '🔔' : '🔕';
+  b.title = soundOn ? 'Alert sound on (click to mute)' : 'Alert sound off (click to unmute)';
+}
+function toggleSound() {
+  soundOn = !soundOn;
+  localStorage.setItem('ws_tracker_sound', soundOn ? 'on' : 'off');
+  paintSoundBtn();
+  if (soundOn) beep(1);
+  showToast(soundOn ? 'Alert sound on' : 'Alert sound off');
+}
+
+
+// ══ WIDGET RENDER ══
 function renderTimerBar() {
-  const bar=document.getElementById('timerBar'), nameEl=document.getElementById('timerProjectName');
-  const dispEl=document.getElementById('timerDisplay'), btn=document.getElementById('playStopBtn');
-  const icon=document.getElementById('timerIcon');
+  const bar=$('timerBar'), nameEl=$('timerProjectName');
+  const dispEl=$('timerDisplay'), btn=$('playStopBtn');
+  const icon=$('timerIcon');
   if (state.activeProjectId) {
     const proj=state.projects.find(p=>p.id===state.activeProjectId);
     bar.classList.remove('idle'); nameEl.classList.remove('idle-text');
     nameEl.textContent=proj?proj.name:'Unknown'; icon.textContent=proj?proj.icon:'▶';
-    dispEl.textContent=formatMM(Math.floor((Date.now()-state.activeStart)/1000));
+    dispEl.textContent=formatMM(activeElapsed());
     dispEl.classList.remove('idle'); btn.classList.add('running'); btn.textContent='■';
   } else {
     bar.classList.add('idle'); nameEl.classList.add('idle-text');
@@ -754,11 +905,63 @@ function renderTimerBar() {
     dispEl.textContent='00:00'; dispEl.classList.add('idle');
     btn.classList.remove('running'); btn.textContent='▶';
   }
+  paintTimer();
+}
+
+// Countdown (or count-up when nothing limits it), warning colours, header pill
+function paintTimer() {
+  const bar=$('timerBar'), disp=$('timerDisplay'), sub=$('timerSub'), fill=$('budgetFill'), pill=$('headerCountdown');
+  const proj = state.projects.find(p => p.id === state.activeProjectId);
+  const hidePill = () => { pill.className = 'header-countdown'; pill.textContent = ''; };
+  if (!proj || !state.activeStart) { sub.textContent = ''; bar.classList.remove('warn', 'has-block'); hidePill(); return; }
+  const lim = activeLimit();
+  if (!lim) {
+    disp.textContent = formatMM(activeElapsed());
+    sub.textContent = 'No time block set';
+    bar.classList.remove('warn', 'has-block'); hidePill();
+    return;
+  }
+  const rem = lim.rem;
+  const warn = rem <= warnThreshold(lim.total);
+  disp.textContent = formatMM(Math.max(0, rem));
+  sub.textContent = warn ? `⚠ Wrapping up — ${fmtLeft(rem)} left`
+    : (lim.kind === 'slot' ? `left in planned block (${fmtLeft(lim.total)})` : `left of ${fmtLeft(lim.total)} block`);
+  bar.classList.toggle('warn', warn); bar.classList.add('has-block');
+  fill.style.width = Math.min(100, Math.max(0, (lim.total - rem) / lim.total * 100)) + '%';
+  pill.textContent = formatMM(Math.max(0, rem));
+  pill.className = 'header-countdown show' + (warn ? ' warn' : '');
+}
+
+// Fills one project row: time in the current filter, time-block chip, progress bar
+function paintRow(row, proj) {
+  const secs = projectSecondsInFilter(proj);
+  row.querySelector('.project-time').textContent = secs > 0 ? formatMM(secs) : '';
+  const chip = row.querySelector('.block-chip'), fill = row.querySelector('.row-bar-fill');
+  const rem = projRemaining(proj);
+  let st;
+  if (rem === null) {
+    st = 'unset'; chip.textContent = '＋ Set time block';
+  } else if (rem <= 0) {
+    st = 'over'; chip.textContent = "⏰ Time's up · extend";
+    fill.style.width = '100%';
+  } else {
+    st = rem <= warnThreshold(proj.allocatedSeconds) ? 'low' : 'ok';
+    chip.textContent = `⏳ ${fmtLeft(rem)} left of ${fmtLeft(proj.allocatedSeconds)}`;
+    fill.style.width = Math.min(100, projUsed(proj) / proj.allocatedSeconds * 100) + '%';
+  }
+  chip.className = 'block-chip ' + st;
+  row.dataset.state = st;
+}
+
+function paintActiveRow() {
+  const row = document.querySelector(`.project-item[data-id="${state.activeProjectId}"]`);
+  const proj = state.projects.find(p => p.id === state.activeProjectId);
+  if (row && proj) paintRow(row, proj);
 }
 
 function renderProjects() {
-  const query=document.getElementById('searchInput').value.toLowerCase();
-  const list=document.getElementById('projectList');
+  const query=$('searchInput').value.toLowerCase();
+  const list=$('projectList');
   list.innerHTML='';
   const filtered=state.projects.filter(p=>p.name.toLowerCase().includes(query));
   if (!filtered.length) {
@@ -766,28 +969,37 @@ function renderProjects() {
     return;
   }
   filtered.forEach(proj => {
-    const secs=projectSecondsInFilter(proj), isActive=proj.id===state.activeProjectId;
+    const isActive=proj.id===state.activeProjectId;
     const div=document.createElement('div');
     div.className='project-item'+(isActive?' active-project':'');
     div.dataset.id=proj.id;
     div.innerHTML=`
       <div class="project-icon">${proj.icon}</div>
       <div class="project-meta">
-        <div class="project-title">${proj.name}</div>
-        <div class="project-sub">${secs>0?formatHM(secs):'—'}</div>
+        <div class="project-title">${esc(proj.name)}</div>
+        <div class="project-sub"><button class="block-chip" title="Adjust time block"></button></div>
       </div>
-      <div class="project-time">${secs>0?formatMM(secs):''}</div>
-      <button class="delete-btn" title="Delete project">✕</button>`;
+      <div class="project-time"></div>
+      <button class="delete-btn" title="Delete project">✕</button>
+      <div class="row-bar"><div class="row-bar-fill"></div></div>`;
+    paintRow(div, proj);
     div.addEventListener('click', e => {
-      if (e.target.closest('.delete-btn')) return;
+      if (e.target.closest('.delete-btn') || e.target.closest('.block-chip')) return;
       isActive ? stopTimer() : startTimer(proj.id);
+    });
+    div.querySelector('.block-chip').addEventListener('click', e => {
+      e.stopPropagation();
+      const rem = projRemaining(proj);
+      const spent = rem !== null && rem <= 0;
+      openBlockOverlay(spent ? 'timeup' : 'edit', proj.id, false);
     });
     div.querySelector('.delete-btn').addEventListener('click', e => {
       e.stopPropagation();
       if (confirm(`Delete "${proj.name}"?\nThis removes all logged time.`)) {
         if (state.activeProjectId===proj.id) stopTimer();
         state.projects=state.projects.filter(p=>p.id!==proj.id);
-        saveState(); renderAll(); renderDashboard();
+        state.plan=(state.plan||[]).filter(e=>e.projectId!==proj.id);
+        saveState(); renderAll();
         showToast(`Deleted "${proj.name}"`);
       }
     });
@@ -815,7 +1027,7 @@ function renderSummary() {
     rows.innerHTML=`<div style="font-size:12px;color:#9ca3af;padding:6px 0;">No time logged yet.</div>`;
 }
 
-function renderAll() { renderTimerBar(); renderProjects(); renderSummary(); }
+function renderAll() { renderTimerBar(); renderProjects(); renderSummary(); refreshPlanUI(); }
 function filterProjects() { renderProjects(); }
 
 function setFilter(f, tab) {
@@ -826,214 +1038,424 @@ function setFilter(f, tab) {
 }
 
 function addProject() {
-  const input=document.getElementById('newProjectInput');
+  const input=$('newProjectInput'), sel=$('newProjectMinutes');
   const name=input.value.trim();
   if (!name) { showToast('Enter a project name first'); return; }
+  const mins=parseInt(sel.value,10);
+  if (!mins) { showToast('Choose how much time you will give it'); sel.focus(); return; }
   const icons=['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
-  state.projects.push({id:uid(),name,icon:icons[Math.floor(Math.random()*icons.length)],sessions:[]});
-  saveState(); input.value=''; renderAll(); renderDashboard();
-  showToast(`Added "${name}"`);
+  state.projects.push({id:uid(),name,icon:icons[Math.floor(Math.random()*icons.length)],allocatedSeconds:mins*60,sessions:[]});
+  saveState(); input.value=''; sel.selectedIndex=0; sel.classList.add('empty'); renderAll();
+  showToast(`Added "${name}" · ${fmtLeft(mins*60)} block`);
 }
 
-// ══════════════════════════════════════
-// DASHBOARD RENDER
-// ══════════════════════════════════════
-const CHART_COLORS = ['#16a34a','#2563eb','#d97706','#9333ea','#ef4444','#0891b2','#ca8a04','#be185d'];
 
-function setDashFilter(f, tab) {
-  dashFilter = f;
-  document.querySelectorAll('.dash-tab').forEach(t=>t.classList.remove('active'));
-  tab.classList.add('active');
-  renderDashboard();
+// ══ DAY PLAN ══
+// state.plan = [{id, projectId, day:'YYYY-MM-DD', startMin (minutes after midnight), durMin}]
+const PLAN_START_H = 5, PLAN_END_H = 22;          // timeline runs 5 AM – 10 PM
+const HOUR_PX = 64, SNAP = 15, TOP_PAD = 10;
+const PX_MIN = HOUR_PX / 60;
+const DAY_MIN_START = PLAN_START_H * 60, DAY_MIN_END = PLAN_END_H * 60;
+const PLAN_COLORS = [['#16a34a','#dcfce7'],['#2563eb','#dbeafe'],['#d97706','#fef3c7'],['#7c3aed','#ede9fe'],['#db2777','#fce7f3'],['#0d9488','#ccfbf1']];
+let view = 'projects';
+let planDay = dayKey(new Date());
+let dragInfo = null;          // truthy while a drag is in progress (pauses re-rendering)
+const notified = {};          // start-time reminders already shown
+
+function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function todayKey() { return dayKey(new Date()); }
+function parseDay(k) { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); }
+function shiftDay(k, n) { const d = parseDay(k); d.setDate(d.getDate() + n); return dayKey(d); }
+function nowMin() { const n = new Date(); return n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60; }
+function fmtClock(min) {
+  const h = Math.floor(min / 60) % 24, m = Math.floor(min % 60);
+  return `${h % 12 || 12}:${pad(m)} ${h >= 12 ? 'PM' : 'AM'}`;
 }
-
-function getAllDashSessions() {
-  const all = [];
-  state.projects.forEach(proj => {
-    proj.sessions.filter(s=>sessionInDashFilter(s)).forEach(sess => {
-      all.push({ ...sess, projectName: proj.name, projectIcon: proj.icon });
-    });
-  });
-  return all;
+function projColor(id) {
+  let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PLAN_COLORS[h % PLAN_COLORS.length];
 }
+function yOf(min) { return TOP_PAD + (min - DAY_MIN_START) * PX_MIN; }
+function minuteAtY(clientY) {
+  const r = $('planGrid').getBoundingClientRect();
+  return DAY_MIN_START + (clientY - r.top - TOP_PAD) / PX_MIN;
+}
+function dayEntries(day) { return state.plan.filter(e => e.day === day).sort((a, b) => a.startMin - b.startMin); }
 
-function renderDashboard() {
-  const sessions = getAllDashSessions();
-  const totalSec = sessions.reduce((a,s)=>a+s.seconds, 0);
-  const labels = {day:'Today',week:'This Week',month:'This Month',year:'This Year'};
-
-  // KPIs
-  document.getElementById('kpiTotal').textContent = formatHM(totalSec);
-  document.getElementById('kpiPeriodLabel').textContent = labels[dashFilter];
-  const ls=getLastSynced(); if(ls) {
-    const el=document.getElementById('lastSyncedLabel');
-    if(el) el.textContent='Last synced: '+ls;
+// ── Placement rules: stay inside the day, never overlap another block ──
+function isFree(day, start, dur, ignoreId) {
+  if (start < DAY_MIN_START || start + dur > DAY_MIN_END) return false;
+  return !state.plan.some(e => e.day === day && e.id !== ignoreId && start < e.startMin + e.durMin && e.startMin < start + dur);
+}
+// Nearest free start to `want` (searching both ways unless fwd = only later times)
+function findSlot(day, want, dur, ignoreId, fwd) {
+  want = Math.max(DAY_MIN_START, Math.min(want, DAY_MIN_END - dur));
+  const steps = (DAY_MIN_END - DAY_MIN_START) / SNAP;
+  for (let i = 0; i <= steps; i++) {
+    const o = i * SNAP;
+    if (isFree(day, want + o, dur, ignoreId)) return want + o;
+    if (!fwd && i > 0 && isFree(day, want - o, dur, ignoreId)) return want - o;
   }
-  document.getElementById('kpiSessions').textContent = sessions.length;
-  const avgSec = sessions.length ? Math.round(totalSec/sessions.length) : 0;
-  document.getElementById('kpiAvg').textContent = sessions.length ? formatHM(avgSec) : '—';
-  document.getElementById('printDate').textContent = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-  document.getElementById('printPeriod').textContent = `Period: ${labels[dashFilter]}`;
-
-  // Top project
-  let topProj = null, topSec = 0;
-  state.projects.forEach(proj => {
-    const secs = proj.sessions.filter(s=>sessionInDashFilter(s)).reduce((a,s)=>a+s.seconds,0);
-    if (secs > topSec) { topSec = secs; topProj = proj; }
-  });
-  document.getElementById('kpiTopProject').textContent = topProj ? `${topProj.icon} ${topProj.name}` : '—';
-  document.getElementById('kpiTopHours').textContent = topProj ? formatHM(topSec) : 'No data yet';
-
-  renderBarChart(sessions);
-  renderDonut();
-  renderTable(sessions);
+  return null;
+}
+// Same, but shrinks the block if the day has no gap big enough
+function placeEntry(day, want, dur, fwd) {
+  for (let d = dur; d >= SNAP; d -= SNAP) {
+    const st = findSlot(day, want, d, null, fwd);
+    if (st !== null) return { start: st, dur: d };
+  }
+  return null;
 }
 
-function renderBarChart(sessions) {
-  const canvas = document.getElementById('barChart');
-  const ctx = canvas.getContext('2d');
-  if (barChartInst) { barChartInst.destroy(); barChartInst = null; }
+// New blocks default to what is still unplanned in the project's time block
+function defaultEntryMin(proj) {
+  const rem = projRemaining(proj);
+  if (rem === null) return 30;
+  const planned = state.plan.filter(e => e.projectId === proj.id).reduce((a, e) => a + Math.max(0, entryRemaining(e)), 0);
+  const left = rem - planned;
+  if (left <= 0) return 15;
+  return Math.max(15, Math.min(240, Math.ceil(left / 900) * 15));
+}
 
-  let labels=[], data=[];
+function commitEntry(projId, day, start, dur) {
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  const e = { id: uid(), projectId: projId, day, startMin: start, durMin: dur };
+  state.plan.push(e);
+  if (day === todayKey() && start <= nowMin()) notified[e.id] = true;
+  saveState(); refreshPlanUI();
+  showToast(`Planned ${proj.name} · ${fmtClock(start)} · ${fmtLeft(dur * 60)}`);
+}
+function addAuto(projId) {
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  const want = planDay === todayKey() ? Math.max(DAY_MIN_START, Math.ceil(nowMin() / SNAP) * SNAP) : 9 * 60;
+  const p = placeEntry(planDay, want, defaultEntryMin(proj), true);
+  if (!p) { showToast('No room left on this day'); return; }
+  commitEntry(projId, planDay, p.start, p.dur);
+}
+function removePlanEntry(id) {
+  if (state.activeEntryId === id) stopTimer();
+  state.plan = state.plan.filter(e => e.id !== id);
+  saveState(); refreshPlanUI();
+}
+function startEntry(id) {
+  const e = entryById(id);
+  if (!e || !projOf(e)) return;
+  startTimer(e.projectId, e.id);
+}
+function nextAfter(ent) {
+  return dayEntries(ent.day).find(e => e.id !== ent.id && e.startMin >= ent.startMin && entryRemaining(e) > 0 && projOf(e)) || null;
+}
+function nextUp() {
+  const nm = nowMin();
+  return dayEntries(todayKey()).find(e => state.activeEntryId !== e.id && entryRemaining(e) > 0 && e.startMin + e.durMin > nm && projOf(e)) || null;
+}
 
-  if (dashFilter === 'day') {
-    // Hours by hour of day
-    document.getElementById('barChartTitle').textContent = 'Hours by Hour (Today)';
-    const byHour = {};
-    sessions.forEach(s => {
-      const h = new Date(s.start).getHours();
-      byHour[h] = (byHour[h]||0) + s.seconds;
-    });
-    const hours = [...new Set(Object.keys(byHour).map(Number))].sort((a,b)=>a-b);
-    if (!hours.length) {
-      // show 6am-6pm skeleton
-      for (let h=6;h<=18;h++) { labels.push(h%12||12)+(h<12?'am':'pm'); data.push(0); }
-    } else {
-      const mn=Math.min(...hours), mx=Math.max(...hours);
-      for (let h=mn;h<=mx;h++) {
-        labels.push((h%12||12)+(h<12?'am':'pm'));
-        data.push(+(( byHour[h]||0)/3600).toFixed(2));
-      }
+// +minutes on a planned block; later blocks slide down to make room
+function extendEntry(ent, min) {
+  const end = ent.startMin + ent.durMin + min;
+  let cursor = end;
+  const moves = [];
+  if (end > DAY_MIN_END) { showToast('No room left today to extend this block'); return false; }
+  for (const x of dayEntries(ent.day)) {
+    if (x.id === ent.id || x.startMin < ent.startMin) continue;
+    if (x.startMin >= cursor) break;
+    moves.push([x, cursor]);
+    cursor += x.durMin;
+  }
+  if (cursor > DAY_MIN_END) { showToast('No room left today to shift later blocks'); return false; }
+  moves.forEach(([x, st]) => { x.startMin = st; });
+  ent.durMin += min;
+  // the project's overall time block has to cover the longer planned block too
+  const proj = projOf(ent);
+  if (proj && proj.allocatedSeconds) {
+    const budgetLeft = proj.allocatedSeconds - projLogged(proj);
+    const entLeft = ent.durMin * 60 - entryLogged(ent);
+    if (budgetLeft < entLeft) proj.allocatedSeconds += entLeft - budgetLeft;
+  }
+  saveState(); refreshPlanUI();
+  return true;
+}
+function extendEntryFromOverlay(min) {
+  if (!overlayState) return;
+  const ent = entryById(overlayState.entryId);
+  if (!ent) { closeBlockOverlay(); return; }
+  if (!extendEntry(ent, min)) return;
+  closeBlockOverlay();
+  showToast(`+${min} min added to this block`);
+  startTimer(ent.projectId, ent.id);
+}
+function slotDoneStartNext() {
+  if (!overlayState) return;
+  const id = overlayState.nextId;
+  closeBlockOverlay();
+  if (id) startEntry(id);
+}
+
+// ── Rendering ──
+function fmtHour(h) { return `${h % 12 || 12} ${h >= 12 && h < 24 ? 'PM' : 'AM'}`; }
+function buildPlanBg() {
+  let h = '';
+  for (let hr = PLAN_START_H; hr <= PLAN_END_H; hr++) {
+    const y = yOf(hr * 60);
+    h += `<div class="plan-hline" style="top:${y}px"></div><div class="plan-hlabel" style="top:${y}px">${fmtHour(hr)}</div>`;
+    if (hr < PLAN_END_H) h += `<div class="plan-half" style="top:${y + HOUR_PX / 2}px"></div>`;
+  }
+  $('planBg').innerHTML = h;
+  $('planGrid').style.height = (yOf(DAY_MIN_END) + TOP_PAD) + 'px';
+}
+
+function refreshPlanUI() {
+  paintNextStrip();
+  if (view === 'plan' && !dragInfo) renderPlan();
+}
+
+function renderPlan() {
+  if (dragInfo) return;
+  const day = planDay;
+  $('planDateLabel').textContent = parseDay(day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+  const tray = $('planTray');
+  tray.innerHTML = '';
+  if (!state.projects.length) tray.innerHTML = '<div class="plan-empty">Add a project on the Projects tab, then drag it onto the day.</div>';
+  state.projects.forEach(p => {
+    const rem = projRemaining(p), c = projColor(p.id);
+    const chip = document.createElement('div');
+    chip.className = 'plan-chip';
+    chip.style.setProperty('--c', c[0]);
+    chip.title = 'Drag onto the day, or tap to add at the next free time';
+    chip.innerHTML = `<span>${p.icon}</span><span class="pc-name">${esc(p.name)}</span><span class="pc-left">${rem === null ? '' : (rem > 0 ? fmtLeft(rem) : '0m')}</span>`;
+    chip.addEventListener('pointerdown', ev => trayPointerDown(ev, p.id));
+    tray.appendChild(chip);
+  });
+
+  const box = $('planEntries');
+  box.innerHTML = '<div class="plan-preview" id="planPreview"></div>';
+  const list = dayEntries(day).filter(projOf);
+  list.forEach(e => box.appendChild(buildEntry(e)));
+  const total = list.reduce((a, e) => a + e.durMin, 0);
+  $('planTotal').textContent = total ? `Planned ${fmtLeft(total * 60)}` : '';
+  paintPlanLive();
+}
+
+function buildEntry(e) {
+  const proj = projOf(e), c = projColor(proj.id);
+  const done = entryRemaining(e) <= 0, active = state.activeEntryId === e.id;
+  const el = document.createElement('div');
+  el.className = 'plan-entry' + (done ? ' done' : '') + (active ? ' active' : '') + (e.durMin <= 15 ? ' tiny' : '');
+  el.dataset.id = e.id;
+  el.style.setProperty('--c', c[0]); el.style.setProperty('--bg', c[1]);
+  el.style.top = yOf(e.startMin) + 'px';
+  el.style.height = (e.durMin * PX_MIN - 2) + 'px';
+  el.innerHTML = `
+    <div class="pe-main"><span class="pe-name">${proj.icon} ${esc(proj.name)}</span><span class="pe-time"></span></div>
+    <div class="pe-actions">
+      ${done ? '<span class="pe-check" title="Complete">✓</span>'
+             : `<button class="pe-btn pe-start" title="${active ? 'Stop' : 'Start this block'}">${active ? '■' : '▶'}</button>`}
+      <button class="pe-btn pe-del" title="Remove from plan">✕</button>
+    </div>
+    <div class="pe-handle" title="Drag to resize"></div>`;
+  paintEntryTime(el, e);
+  const st = el.querySelector('.pe-start');
+  if (st) st.addEventListener('click', ev => { ev.stopPropagation(); active ? stopTimer() : startEntry(e.id); });
+  el.querySelector('.pe-del').addEventListener('click', ev => { ev.stopPropagation(); removePlanEntry(e.id); });
+  el.addEventListener('pointerdown', ev => entryPointerDown(ev, e, el));
+  return el;
+}
+
+function paintEntryTime(el, e) {
+  const t = el.querySelector('.pe-time');
+  if (!t) return;
+  if (state.activeEntryId === e.id) t.textContent = '⏱ ' + formatMM(Math.max(0, entryRemaining(e))) + ' left';
+  else if (entryRemaining(e) <= 0) t.textContent = 'Done · ' + fmtLeft(e.durMin * 60);
+  else t.textContent = `${fmtClock(e.startMin)} – ${fmtClock(e.startMin + e.durMin)}`;
+}
+
+// Cheap once-a-second repaint: now-line and the running block's countdown
+function paintPlanLive() {
+  const now = $('planNow'), nm = nowMin();
+  if (planDay === todayKey() && nm >= DAY_MIN_START && nm <= DAY_MIN_END) {
+    now.style.display = 'block';
+    now.style.top = yOf(nm) + 'px';
+    now.querySelector('.now-pill').textContent = fmtClock(Math.floor(nm));
+  } else now.style.display = 'none';
+  if (dragInfo) return;
+  document.querySelectorAll('.plan-entry').forEach(el => { const e = entryById(el.dataset.id); if (e) paintEntryTime(el, e); });
+}
+
+function paintNextStrip() {
+  const el = $('nextStrip'), e = nextUp();
+  if (!e) { el.className = 'next-strip'; return; }
+  const proj = projOf(e), nm = nowMin(), due = e.startMin <= nm;
+  const when = due ? `Due now (${fmtClock(e.startMin)})`
+    : `Up next · ${fmtClock(e.startMin)}` + (e.startMin - nm < 60 ? ` (in ${Math.ceil(e.startMin - nm)}m)` : '');
+  el.className = 'next-strip show' + (due ? ' due' : '');
+  $('nextText').innerHTML = `<b>${when}</b> — ${proj.icon} ${esc(proj.name)} · ${fmtLeft(e.durMin * 60)}`;
+  $('nextGo').dataset.id = e.id;
+}
+
+// Runs every second: keeps the strip/now-line fresh and reminds you when a planned block is due
+function planClock() {
+  paintNextStrip();
+  if (view === 'plan') paintPlanLive();
+  const nm = nowMin();
+  dayEntries(todayKey()).forEach(e => {
+    const proj = projOf(e);
+    if (!proj || notified[e.id] || state.activeEntryId === e.id || entryRemaining(e) <= 0) return;
+    if (nm >= e.startMin && nm < e.startMin + 2) {
+      notified[e.id] = true;
+      if (minimized && !state.activeProjectId) toggleMinimize();
+      beep(2);
+      showToast(`⏰ Time to start ${proj.name}`);
     }
-  } else if (dashFilter === 'week') {
-    document.getElementById('barChartTitle').textContent = 'Hours by Day (Last 7 Days)';
-    const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const byDay={};
-    sessions.forEach(s=>{ const d=new Date(s.start).getDay(); byDay[d]=(byDay[d]||0)+s.seconds; });
-    for(let i=0;i<7;i++){ labels.push(days[i]); data.push(+((byDay[i]||0)/3600).toFixed(2)); }
-  } else if (dashFilter === 'month') {
-    document.getElementById('barChartTitle').textContent = 'Hours by Week (This Month)';
-    const byWeek={};
-    sessions.forEach(s=>{
-      const d=new Date(s.start), wk=Math.ceil(d.getDate()/7);
-      byWeek[wk]=(byWeek[wk]||0)+s.seconds;
+  });
+}
+
+function pruneOldPlan() {
+  const cutoff = shiftDay(todayKey(), -14), before = state.plan.length;
+  state.plan = state.plan.filter(e => e.day >= cutoff);
+  if (state.plan.length !== before) saveState();
+}
+
+// ── Navigation ──
+function scrollPlanDefault() {
+  const sc = $('planScroll');
+  let target;
+  if (planDay === todayKey()) target = Math.max(DAY_MIN_START, nowMin());
+  else { const f = dayEntries(planDay)[0]; target = f ? f.startMin : 8 * 60; }
+  sc.scrollTop = Math.max(0, yOf(target) - 90);
+}
+function setView(v) {
+  view = v;
+  $('viewProjects').style.display = v === 'projects' ? '' : 'none';
+  $('viewPlan').style.display = v === 'plan' ? '' : 'none';
+  $('vtabProjects').classList.toggle('active', v === 'projects');
+  $('vtabPlan').classList.toggle('active', v === 'plan');
+  if (v === 'plan') { renderPlan(); scrollPlanDefault(); }
+}
+function planShift(n) { planDay = shiftDay(planDay, n); renderPlan(); scrollPlanDefault(); }
+function planGoToday() { planDay = todayKey(); renderPlan(); scrollPlanDefault(); }
+
+// ── Dragging (pointer events: works with mouse, pen and touch) ──
+function beginDrag(ev, h) {
+  const sx = ev.clientX, sy = ev.clientY;
+  let lx = sx, ly = sy, on = false, raf = 0;
+  const loop = () => {
+    const sc = $('planScroll'), r = sc.getBoundingClientRect();
+    if (lx >= r.left && lx <= r.right) {
+      if (ly < r.top + 28 && ly > r.top - 60) sc.scrollTop -= 7;
+      else if (ly > r.bottom - 28 && ly < r.bottom + 60) sc.scrollTop += 7;
+    }
+    h.move(lx, ly);
+    raf = requestAnimationFrame(loop);
+  };
+  const move = e => {
+    lx = e.clientX; ly = e.clientY;
+    if (!on) {
+      if (Math.hypot(lx - sx, ly - sy) < 5) return;
+      on = true; dragInfo = { }; document.body.classList.add('dragging');
+      if (h.start) h.start();
+      raf = requestAnimationFrame(loop);
+    }
+    h.move(lx, ly);
+  };
+  const up = e => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    cancelAnimationFrame(raf);
+    document.body.classList.remove('dragging');
+    const was = on;
+    dragInfo = null;
+    if (was) h.end(lx, ly, e.type === 'pointercancel');
+    else if (h.click) h.click();
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
+}
+
+function trayPointerDown(ev, projId) {
+  if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  ev.preventDefault();
+  const dur = defaultEntryMin(proj);
+  let ghost = null, drop = null, overGrid = false;
+  beginDrag(ev, {
+    click() { addAuto(projId); },
+    start() {
+      ghost = document.createElement('div');
+      ghost.className = 'plan-ghost';
+      ghost.textContent = `${proj.icon} ${proj.name} · ${fmtLeft(dur * 60)}`;
+      document.body.appendChild(ghost);
+    },
+    move(x, y) {
+      ghost.style.left = (x + 12) + 'px'; ghost.style.top = (y + 12) + 'px';
+      const r = $('planScroll').getBoundingClientRect(), pv = $('planPreview');
+      overGrid = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      drop = overGrid ? placeEntry(planDay, Math.floor(minuteAtY(y) / SNAP) * SNAP, dur, false) : null;
+      if (drop) { pv.style.display = 'block'; pv.style.top = yOf(drop.start) + 'px'; pv.style.height = (drop.dur * PX_MIN - 2) + 'px'; }
+      else pv.style.display = 'none';
+    },
+    end(x, y, cancelled) {
+      if (ghost) ghost.remove();
+      const pv = $('planPreview'); if (pv) pv.style.display = 'none';
+      if (cancelled) return;
+      if (drop) commitEntry(projId, planDay, drop.start, drop.dur);
+      else if (overGrid) showToast('No room left on this day');
+    }
+  });
+}
+
+function entryPointerDown(ev, e, el) {
+  if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+  if (ev.target.closest('.pe-btn')) return;
+  ev.preventDefault();
+  const sy = ev.clientY;
+  if (ev.target.closest('.pe-handle')) {
+    // resize: bottom edge, 15-minute steps, can't shrink below time already used, can't hit the next block
+    const orig = e.durMin, minD = Math.min(orig, Math.max(SNAP, Math.ceil(entryUsed(e) / 60 / SNAP) * SNAP));
+    let cur = orig;
+    beginDrag(ev, {
+      start() { el.classList.add('dragging'); },
+      move(x, y) {
+        let d = Math.max(minD, orig + Math.round((y - sy) / PX_MIN / SNAP) * SNAP);
+        while (d > minD && !isFree(e.day, e.startMin, d, e.id)) d -= SNAP;
+        cur = d;
+        el.style.height = (cur * PX_MIN - 2) + 'px';
+      },
+      end(x, y, cancelled) {
+        el.classList.remove('dragging');
+        if (!cancelled && cur !== orig) { e.durMin = cur; saveState(); }
+        refreshPlanUI();
+      }
     });
-    for(let w=1;w<=5;w++){ labels.push(`Wk ${w}`); data.push(+((byWeek[w]||0)/3600).toFixed(2)); }
   } else {
-    document.getElementById('barChartTitle').textContent = 'Hours by Month (This Year)';
-    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const byMonth={};
-    sessions.forEach(s=>{ const m=new Date(s.start).getMonth(); byMonth[m]=(byMonth[m]||0)+s.seconds; });
-    months.forEach((m,i)=>{ labels.push(m); data.push(+((byMonth[i]||0)/3600).toFixed(2)); });
-  }
-
-  barChartInst = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Hours',
-        data,
-        backgroundColor: 'rgba(22,163,74,0.75)',
-        borderColor: '#15803d',
-        borderWidth: 1,
-        borderRadius: 5,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}h` } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9ca3af' } },
-        y: {
-          beginAtZero: true,
-          ticks: { font: { size: 10 }, color: '#9ca3af', callback: v => v+'h' },
-          grid: { color: '#f3f4f6' }
-        }
+    // move: snaps to 15 minutes and to the nearest free gap
+    let grab = 0, cur = e.startMin;
+    beginDrag(ev, {
+      start() { grab = minuteAtY(sy) - e.startMin; el.classList.add('dragging'); },
+      move(x, y) {
+        const want = Math.round((minuteAtY(y) - grab) / SNAP) * SNAP;
+        const st = findSlot(e.day, want, e.durMin, e.id);
+        if (st !== null) cur = st;
+        el.style.top = yOf(cur) + 'px';
+        const t = el.querySelector('.pe-time');
+        if (t && state.activeEntryId !== e.id) t.textContent = `${fmtClock(cur)} – ${fmtClock(cur + e.durMin)}`;
+      },
+      end(x, y, cancelled) {
+        el.classList.remove('dragging');
+        if (!cancelled && cur !== e.startMin) { e.startMin = cur; delete notified[e.id]; saveState(); }
+        refreshPlanUI();
       }
-    }
-  });
-}
-
-function renderDonut() {
-  const canvas = document.getElementById('donutChart');
-  const ctx = canvas.getContext('2d');
-  if (donutChartInst) { donutChartInst.destroy(); donutChartInst=null; }
-
-  const projData = state.projects.map((proj,i) => ({
-    name: proj.name, icon: proj.icon,
-    secs: proj.sessions.filter(s=>sessionInDashFilter(s)).reduce((a,s)=>a+s.seconds,0),
-    color: CHART_COLORS[i % CHART_COLORS.length]
-  })).filter(p=>p.secs>0).sort((a,b)=>b.secs-a.secs);
-
-  const legend = document.getElementById('donutLegend');
-  legend.innerHTML = '';
-
-  if (!projData.length) {
-    canvas.style.display='none';
-    legend.innerHTML='<div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px 0;">No data yet</div>';
-    return;
+    });
   }
-  canvas.style.display='';
-
-  donutChartInst = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: projData.map(p=>p.name),
-      datasets: [{ data: projData.map(p=>+(p.secs/3600).toFixed(2)), backgroundColor: projData.map(p=>p.color), borderWidth: 2, borderColor:'#fff' }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}h` } } }
-    }
-  });
-
-  const total = projData.reduce((a,p)=>a+p.secs,0);
-  projData.forEach(p => {
-    const pct = total ? Math.round(p.secs/total*100) : 0;
-    const row = document.createElement('div');
-    row.className='legend-row';
-    row.innerHTML=`<div class="legend-dot" style="background:${p.color}"></div><span class="legend-label">${p.icon} ${p.name}</span><span class="legend-val">${formatHMdec(p.secs)} (${pct}%)</span>`;
-    legend.appendChild(row);
-  });
 }
 
-function renderTable(sessions) {
-  const tbody = document.getElementById('sessionTableBody');
-  tbody.innerHTML='';
 
-  const sorted = [...sessions].sort((a,b)=>b.start-a.start);
-
-  if (!sorted.length) {
-    tbody.innerHTML=`<tr><td colspan="5" class="no-data">🌿 No sessions in this period</td></tr>`;
-    return;
-  }
-
-  sorted.forEach(sess => {
-    const tr = document.createElement('tr');
-    tr.innerHTML=`
-      <td>${fmtDate(sess.start)}</td>
-      <td><span class="project-badge">${sess.projectIcon} ${sess.projectName}</span></td>
-      <td>${fmtTime(sess.start)}</td>
-      <td>${fmtTime(sess.end)}</td>
-      <td><span class="duration-pill">${formatHM(sess.seconds)}</span></td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-// ══════════════════════════════════════
-// MINIMIZE / COLLAPSE (widget only)
-// ══════════════════════════════════════
+// ══ MINIMIZE / COLLAPSE ══
 const COLLAPSED_HEIGHT = 52;
 
 function toggleMinimize() {
@@ -1056,18 +1478,16 @@ function notifyHeight() {
   window.parent.postMessage({type:'ws-tracker-resize', height: h+24},'*');
 }
 
-// ══════════════════════════════════════
-// PULSE
-// ══════════════════════════════════════
+
+// ══ PULSE ══
 function startPulse() { document.getElementById('pulseDot').style.animation='pulse 1.2s ease-in-out infinite'; }
 function stopPulse()  { document.getElementById('pulseDot').style.animation=''; }
 const ps=document.createElement('style');
 ps.textContent=`@keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(22,163,74,0.4)}50%{box-shadow:0 0 12px rgba(22,163,74,0.8)}}`;
 document.head.appendChild(ps);
 
-// ══════════════════════════════════════
-// WIDGET SYNC TO SHEETS
-// ══════════════════════════════════════
+
+// ══ SYNC TO SHEETS ══
 function getSyncedIds() {
   try { return JSON.parse(localStorage.getItem('ws_synced_ids')||'[]'); } catch { return []; }
 }
@@ -1082,7 +1502,7 @@ async function syncToSheets() {
   const syncedIds=getSyncedIds(), payload=[];
   state.projects.forEach(proj => {
     proj.sessions.forEach(sess => {
-      const id=`${proj.id}-${sess.start}`;
+      const id=sess._sheetId||`${proj.id}-${sess.start}`;
       if (!syncedIds.includes(id)) payload.push({id,project:proj.name,task:'',start:sess.start,end:sess.end,seconds:sess.seconds,notes:''});
     });
   });
@@ -1104,160 +1524,16 @@ async function syncToSheets() {
   }
 }
 
-// ══════════════════════════════════════
-// DASHBOARD EXPORT TO SHEETS
-// ══════════════════════════════════════
-// ══════════════════════════════════════
-// PUSH — Dashboard → Sheets
-// ══════════════════════════════════════
-async function dashSyncToSheets() {
-  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
-  const btn=document.getElementById('dashSyncBtn');
 
-  // Build full payload of ALL sessions (not just filtered) so sheet stays complete
-  const syncedIds=getSyncedIds(), payload=[];
-  state.projects.forEach(proj=>{
-    proj.sessions.forEach(sess=>{
-      const id=`${proj.id}-${sess.start}`;
-      // Always include — server will update if exists, add if new
-      payload.push({id, project:proj.name, task:'', start:sess.start, end:sess.end, seconds:sess.seconds, notes:''});
-    });
-  });
-  if (!payload.length) { showToast('No sessions to push yet'); return; }
-
-  btn.classList.add('syncing'); btn.textContent='⟳ Pushing…';
-  setSyncStatus('info', `⟳ Pushing ${payload.length} sessions to Google Sheets…`);
-  try {
-    const res=await fetch(DASH_SHEETS_URL,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
-    const json=await res.json();
-    if (json.success) {
-      markSynced(payload.map(p=>p.id));
-      btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pushed!';
-      const msg=`✓ Pushed ${json.added} new + ${json.updated} updated rows to Google Sheets`;
-      showToast(msg); setSyncStatus('success', msg);
-      setLastSynced();
-      setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='📊 Push to Sheets'; },3000);
-    } else throw new Error(json.error||'Unknown error');
-  } catch(err) {
-    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
-    const msg='✕ Push failed — see console for details';
-    showToast('Push failed'); setSyncStatus('error', msg); console.error(err);
-    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='📊 Push to Sheets'; },3000);
-  }
-}
-
-// ══════════════════════════════════════
-// PULL — Sheets → Dashboard (two-way)
-// ══════════════════════════════════════
-async function pullFromSheets() {
-  if (DASH_SHEETS_URL==='YOUR_APPS_SCRIPT_URL_HERE') { showToast('⚠️ Paste your Apps Script URL first'); return; }
-  const btn=document.getElementById('pullBtn');
-  btn.classList.add('syncing'); btn.textContent='⟳ Pulling…';
-  setSyncStatus('info','⟳ Fetching latest data from Google Sheets…');
-
-  try {
-    const res = await fetch(DASH_SHEETS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'pull' })
-    });
-    const json = await res.json();
-
-    if (!json.success) throw new Error(json.error||'Pull failed');
-
-    const sheetSessions = json.sessions || [];
-    if (!sheetSessions.length) {
-      btn.classList.remove('syncing');
-      setSyncStatus('info','ℹ️ No sessions found in Google Sheets yet.');
-      showToast('No sessions in Sheets yet');
-      setTimeout(()=>{ btn.textContent='⬇ Pull from Sheets'; },2000);
-      return;
-    }
-
-    // Merge sheet sessions into local state
-    let added=0, updated=0;
-
-    sheetSessions.forEach(sess => {
-      const projName = sess.project;
-      // Find or create the project locally
-      let proj = state.projects.find(p => p.name === projName);
-      if (!proj) {
-        const icons=['📁','🔧','✂️','🚜','🌾','💼','📝','🔑','🌳','⚡','🏡','📞','💧','🌿'];
-        proj = { id: uid(), name: projName, icon: icons[Math.floor(Math.random()*icons.length)], sessions: [] };
-        state.projects.push(proj);
-      }
-
-      // Check if session already exists by matching start timestamp
-      const existingIdx = proj.sessions.findIndex(s => s.start === sess.start);
-      const newSession = { start: sess.start, end: sess.end, seconds: sess.seconds, _sheetId: sess.id };
-
-      if (existingIdx >= 0) {
-        // Update if sheet version differs (user edited in sheet)
-        const existing = proj.sessions[existingIdx];
-        if (existing.seconds !== sess.seconds || existing.end !== sess.end) {
-          proj.sessions[existingIdx] = { ...existing, ...newSession };
-          updated++;
-        }
-      } else {
-        proj.sessions.push(newSession);
-        added++;
-      }
-    });
-
-    saveState();
-    renderAll();
-    renderDashboard();
-
-    btn.classList.remove('syncing'); btn.classList.add('synced'); btn.textContent='✓ Pulled!';
-    const msg=`✓ Pull complete — ${added} new, ${updated} updated from Google Sheets`;
-    showToast(msg); setSyncStatus('success', msg);
-    setLastSynced();
-    setTimeout(()=>{ btn.classList.remove('synced'); btn.textContent='⬇ Pull from Sheets'; },3000);
-
-  } catch(err) {
-    btn.classList.remove('syncing'); btn.classList.add('error'); btn.textContent='✕ Failed';
-    setSyncStatus('error','✕ Pull failed — check console');
-    showToast('Pull failed'); console.error('Pull error:', err);
-    setTimeout(()=>{ btn.classList.remove('error'); btn.textContent='⬇ Pull from Sheets'; },3000);
-  }
-}
-
-// ══════════════════════════════════════
-// SYNC STATUS HELPERS
-// ══════════════════════════════════════
-function setSyncStatus(type, msg) {
-  const bar = document.getElementById('syncStatusBar');
-  bar.className = 'sync-status-bar show ' + type;
-  bar.textContent = msg;
-  if (type === 'success') setTimeout(()=>{ bar.classList.remove('show'); }, 6000);
-}
-
-function setLastSynced() {
-  const now = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true});
-  localStorage.setItem('ws_last_synced', now);
-}
-
-function getLastSynced() {
-  return localStorage.getItem('ws_last_synced') || null;
-}
-
-// ══════════════════════════════════════
-// PRINT
-// ══════════════════════════════════════
-function printDashboard() { window.print(); }
-
-// ══════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════
+// ══ TOAST ══
 function showToast(msg) {
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2400);
 }
 
-// ══════════════════════════════════════
-// FOOTER CLOCK
-// ══════════════════════════════════════
+
+// ══ FOOTER CLOCK ══
 function updateFooterDate() {
   const now=new Date();
   const date=now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
@@ -1265,27 +1541,41 @@ function updateFooterDate() {
   document.getElementById('footerDate').textContent=`${date}  •  ${time}`;
 }
 
-// ══════════════════════════════════════
-// DRAG (widget)
-// ══════════════════════════════════════
-(function initDrag() {
-  // Widget is in normal flow, so drag is disabled to keep layout clean
-  // Remove or uncomment below if you want drag back
-})();
 
-// ══════════════════════════════════════
-// BOOT
-// ══════════════════════════════════════
+// ══ BOOT ══
+
 document.addEventListener('DOMContentLoaded', () => {
+  fillBlockSelect();
+  buildPlanBg();
+  pruneOldPlan();
+  paintSoundBtn();
   updateFooterDate();
   renderAll();
-  renderDashboard();
-  if (state.activeProjectId && state.activeStart) { timerInterval=setInterval(tickTimer,1000); startPulse(); }
+  if (state.activeProjectId && state.activeStart) {
+    timerInterval=setInterval(tickTimer,1000); startPulse();
+    checkBudget();   // the block may have run out while the page was closed
+  }
+  document.addEventListener('pointerdown', ensureAudio, { once: true });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlayState) closeBlockOverlay(); });
   setInterval(renderSummary, 5000);
-  setInterval(renderDashboard, 30000); // refresh dashboard every 30s
   setInterval(updateFooterDate, 1000);
+  setInterval(planClock, 1000);
   setTimeout(notifyHeight, 100);
+
+  // Keep the embedding iframe the right height as projects are added/removed (not while collapsed)
+  if (window.ResizeObserver) new ResizeObserver(() => { if (!minimized) notifyHeight(); }).observe($('widget'));
+
+  // The dashboard page (or another tab) may change the saved data — pick it up live
+  window.addEventListener('storage', e => {
+    if (e.key !== STORAGE_KEY) return;
+    state = loadState();
+    clearInterval(timerInterval);
+    if (state.activeProjectId && state.activeStart) { timerInterval=setInterval(tickTimer,1000); startPulse(); }
+    else stopPulse();
+    renderAll();
+  });
 });
+
 </script>
 </body>
 </html>
