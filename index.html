@@ -170,6 +170,21 @@ html, body {
 .legend-label { font-size: 12px; color: #374151; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .legend-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280; }
 
+/* ── Total time by project (all time) ── */
+.card-title .card-sub { margin-left: auto; font-weight: 500; font-size: 11px; color: #6b7280; font-family: 'IBM Plex Mono', monospace; }
+.ptotal-list { display: flex; flex-direction: column; gap: 11px; }
+.ptotal-row { display: grid; grid-template-columns: minmax(120px, 210px) 1fr auto; align-items: center; gap: 14px; }
+.ptotal-name { font-size: 12.5px; font-weight: 500; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptotal-track { height: 14px; background: #f3f4f6; border-radius: 7px; overflow: hidden; }
+.ptotal-fill { height: 100%; min-width: 3px; border-radius: 7px; }
+.ptotal-val { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #111827; text-align: right; white-space: nowrap; min-width: 118px; }
+.ptotal-val small { margin-left: 6px; font-size: 11px; font-weight: 400; color: #9ca3af; }
+.ptotal-meta { font-size: 11px; color: #9ca3af; margin-top: 12px; }
+@media (max-width: 700px) {
+  .ptotal-row { grid-template-columns: 1fr auto; row-gap: 5px; }
+  .ptotal-track { grid-column: 1 / -1; order: 3; }
+}
+
 /* ── Delete entry ── */
 .col-act { width: 1%; white-space: nowrap; }
 .del-btn {
@@ -380,6 +395,13 @@ td .duration-pill {
       </div>
     </div>
 
+    <!-- Total time by project (all time) -->
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>Total Time by Project <span style="font-weight:400;color:#9ca3af">· all time</span><span class="card-sub" id="projectTotalsSub"></span></div>
+      <div class="ptotal-list" id="projectTotals"></div>
+      <div class="ptotal-meta" id="projectTotalsMeta"></div>
+    </div>
+
     <!-- Session Table -->
     <div class="card">
       <div class="card-title"><div class="dot"></div>Session Log</div>
@@ -508,7 +530,34 @@ function renderDashboard() {
 
   if (typeof Chart !== 'undefined') { renderBarChart(sessions); renderDonut(); }
   else document.querySelectorAll('.chart-wrap, .donut-wrap, .donut-legend').forEach(el => { el.innerHTML = '<div class="no-data">Charts could not load. Check your internet connection and refresh.</div>'; });
+  renderProjectTotals();
   renderTable(sessions);
+}
+
+// All-time hours per project, ranked. Plain HTML bars (no chart library needed), same colours as the donut.
+function renderProjectTotals() {
+  const list = document.getElementById('projectTotals');
+  const sub = document.getElementById('projectTotalsSub'), meta = document.getElementById('projectTotalsMeta');
+  const rows = state.projects.map((p, i) => ({
+    name: p.name, icon: p.icon, color: CHART_COLORS[i % CHART_COLORS.length],
+    secs: p.sessions.reduce((a, x) => a + x.seconds, 0), count: p.sessions.length
+  })).filter(r => r.secs > 0).sort((a, b) => b.secs - a.secs);
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="no-data">No time tracked yet</div>';
+    sub.textContent = ''; meta.textContent = '';
+    return;
+  }
+  const total = rows.reduce((a, r) => a + r.secs, 0), max = rows[0].secs;
+  sub.textContent = `${rows.length} project${rows.length > 1 ? 's' : ''} · ${formatHM(total)}`;
+  list.innerHTML = rows.map(r => `
+    <div class="ptotal-row" title="${esc(r.name)} — ${r.count} session${r.count > 1 ? 's' : ''}">
+      <div class="ptotal-name">${r.icon} ${esc(r.name)}</div>
+      <div class="ptotal-track"><div class="ptotal-fill" style="width:${(r.secs / max * 100).toFixed(1)}%;background:${r.color}"></div></div>
+      <div class="ptotal-val">${formatHM(r.secs)}<small>${Math.round(r.secs / total * 100)}%</small></div>
+    </div>`).join('');
+  const first = Math.min(...state.projects.flatMap(p => p.sessions.map(x => x.start)));
+  meta.textContent = `Every session ever tracked, since ${fmtDate(first)}. The period filter above does not change this block.`;
 }
 
 // Hours grouped for the current filter: used by the on-screen chart and the printed report
